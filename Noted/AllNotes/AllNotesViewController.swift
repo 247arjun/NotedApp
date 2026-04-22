@@ -31,10 +31,9 @@ final class AllNotesViewController: NSViewController, NSTableViewDataSource, NST
 
     // MARK: - Subviews
 
-    private let searchField = NSSearchField()
+    let searchField = NSSearchField()
     private let scrollView = NSScrollView()
     private let tableView = NSTableView()
-    private let createButton = NSButton()
     private let emptyLabel = NSTextField(labelWithString: "No notes yet")
 
     // MARK: - Identifiers
@@ -58,24 +57,10 @@ final class AllNotesViewController: NSViewController, NSTableViewDataSource, NST
         // provides the Liquid Glass sidebar material automatically.
         let root = NSView(frame: NSRect(x: 0, y: 0, width: 280, height: 500))
 
-        // ── Header row: search field + create button ──
+        // Search field (hosted in toolbar, configured here for delegate)
         searchField.placeholderString = "Search notes…"
         searchField.delegate = self
         searchField.sendsSearchStringImmediately = true
-        searchField.translatesAutoresizingMaskIntoConstraints = false
-        root.addSubview(searchField)
-
-        let config = NSImage.SymbolConfiguration(pointSize: 14, weight: .medium)
-        createButton.image = NSImage(systemSymbolName: "plus", accessibilityDescription: "New Note")?
-            .withSymbolConfiguration(config)
-        createButton.isBordered = false
-        createButton.bezelStyle = .inline
-        createButton.target = self
-        createButton.action = #selector(createClicked)
-        createButton.setAccessibilityLabel("New Note")
-        createButton.toolTip = "New Note"
-        createButton.translatesAutoresizingMaskIntoConstraints = false
-        root.addSubview(createButton)
 
         // ── Table view ──
         let column = NSTableColumn(identifier: Self.noteColumnID)
@@ -110,17 +95,7 @@ final class AllNotesViewController: NSViewController, NSTableViewDataSource, NST
         root.addSubview(emptyLabel)
 
         NSLayoutConstraint.activate([
-            // Search field + create button row (below titlebar safe area)
-            searchField.topAnchor.constraint(equalTo: root.safeAreaLayoutGuide.topAnchor, constant: 8),
-            searchField.leadingAnchor.constraint(equalTo: root.leadingAnchor, constant: 12),
-            searchField.trailingAnchor.constraint(equalTo: createButton.leadingAnchor, constant: -8),
-
-            createButton.centerYAnchor.constraint(equalTo: searchField.centerYAnchor),
-            createButton.trailingAnchor.constraint(equalTo: root.trailingAnchor, constant: -12),
-            createButton.widthAnchor.constraint(equalToConstant: 24),
-
-            // Table below header
-            scrollView.topAnchor.constraint(equalTo: searchField.bottomAnchor, constant: 8),
+            scrollView.topAnchor.constraint(equalTo: root.safeAreaLayoutGuide.topAnchor),
             scrollView.leadingAnchor.constraint(equalTo: root.leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: root.trailingAnchor),
             scrollView.bottomAnchor.constraint(equalTo: root.bottomAnchor),
@@ -212,7 +187,7 @@ final class AllNotesViewController: NSViewController, NSTableViewDataSource, NST
 
     // MARK: - Actions
 
-    @objc private func createClicked() {
+    @objc func createClicked() {
         onCreateNote?()
     }
 

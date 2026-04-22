@@ -48,6 +48,17 @@ final class NoteContentView: NSView {
     let textView: NoteTextView
     let resizeHandle: ResizeHandleView
 
+    /// When true, hides the header control buttons (pin/theme/delete/close)
+    /// — used in the All Notes detail pane where controls live in the toolbar.
+    var hidesHeaderControls: Bool = false {
+        didSet {
+            closeButton.isHidden = hidesHeaderControls
+            deleteButton.isHidden = hidesHeaderControls
+            pinButton.isHidden = hidesHeaderControls
+            themeButton.isHidden = hidesHeaderControls
+        }
+    }
+
     // Theme popover
     private var themePopover: NSPopover?
 

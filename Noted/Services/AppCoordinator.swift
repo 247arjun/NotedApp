@@ -33,10 +33,13 @@ final class AppCoordinator: ObservableObject {
         noteStore.loadAll()
 
         if noteStore.notes.isEmpty {
-            // First launch: create a welcome note
-            createNewNote()
+            // First launch: create a welcome note and show All Notes
+            let note = noteStore.createNote()
+            showAllNotes()
+            windowManager.openNewNoteWindow(noteID: note.id)
         } else {
             windowManager.restoreAllWindows()
+            showAllNotes()
         }
     }
 

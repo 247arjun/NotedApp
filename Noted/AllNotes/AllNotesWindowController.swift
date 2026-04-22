@@ -4,25 +4,23 @@ import AppKit
 
 /// Master-detail All Notes window — pure AppKit with Liquid Glass.
 ///
-/// Layout:
+/// Toolbar layout:
 /// ```
-/// ┌───────────────┬──────────────────────────────────┐
-/// │  Sidebar       │  Detail (NoteContentView)        │
-/// │  (note list)   │  ← full note editor/preview     │
-/// │  NSTableView   │  with header controls            │
-/// │                │                                  │
-/// └───────────────┴──────────────────────────────────┘
+/// [ 🔍 Search ][ + ] |  .sidebarTrackingSeparator  |  .flexibleSpace  [ Pin 🎨 🗑 ✕ ]
+///   ← sidebar area →                                   ← detail area (right-aligned) →
 /// ```
-///
-/// - Single click selects → shows note in detail pane (editable preview).
-/// - Double click opens note in standalone floating window.
-/// - NSSplitViewController sidebar gets Liquid Glass automatically on macOS 26.
 @MainActor
-final class AllNotesWindowController: NSWindowController {
+final class AllNotesWindowController: NSWindowController, NSToolbarDelegate {
 
     private var listVC: AllNotesViewController!
     private var detailVC: NoteDetailViewController!
     private weak var noteStore: NoteStore?
+
+    // MARK: - Toolbar Item IDs
+
+    private static let toolbarID       = NSToolbar.Identifier("AllNotesToolbar")
+    private static let searchItemID    = NSToolbarItem.Identifier("SearchItem")
+    private static let createItemID    = NSToolbarItem.Identifier("CreateItem")
 
     convenience init(
         noteStore: NoteStore,
@@ -35,7 +33,7 @@ final class AllNotesWindowController: NSWindowController {
         let listVC = AllNotesViewController(noteStore: noteStore)
         listVC.onCreateNote = onCreateNote
         listVC.isWindowOpen = isWindowOpen
-        listVC.onOpenNote = onOpenNote          // double-click → standalone window
+        listVC.onOpenNote = onOpenNote
 
         // ── Detail (note preview/editor) ──
         let detailVC = NoteDetailViewController(noteStore: noteStore)
@@ -48,28 +46,19 @@ final class AllNotesWindowController: NSWindowController {
 
         // Wire delete from list context menu
         listVC.onDeleteNote = { [weak detailVC] noteID in
-            // If the deleted note is currently previewed, clear it
             if detailVC?.currentNoteID == noteID {
                 detailVC?.clearDetail()
             }
             onDeleteNote(noteID)
         }
 
-        // When theme changes in detail, refresh the list row
         detailVC.onThemeChanged = { [weak listVC] _, _ in
-            _ = listVC  // NoteStore @Published triggers list reload
+            _ = listVC
         }
 
-        // Tint the entire window background with the selected note's theme color.
-        // The sidebar's behindWindow blending will pick up this tint, creating
-        // a full-window colored glass effect.
         detailVC.onWindowColorChanged = { [weak detailVC] color in
             guard let window = detailVC?.view.window else { return }
-            if let color {
-                window.backgroundColor = color
-            } else {
-                window.backgroundColor = .windowBackgroundColor
-            }
+            window.backgroundColor = color ?? .windowBackgroundColor
         }
 
         // ── Split View Controller ──
@@ -94,21 +83,10 @@ final class AllNotesWindowController: NSWindowController {
         window.title = "All Notes"
         window.subtitle = ""
         window.styleMask = [
-            .titled,
-            .closable,
-            .resizable,
-            .miniaturizable,
-            .fullSizeContentView,
+            .titled, .closable, .resizable, .miniaturizable, .fullSizeContentView,
         ]
         window.titleVisibility = .hidden
         window.toolbarStyle = .unified
-
-        // An NSToolbar is required for the sidebar to get its Liquid Glass
-        // treatment and the system sidebar-toggle button.
-        let toolbar = NSToolbar(identifier: "AllNotesToolbar")
-        toolbar.displayMode = .iconOnly
-        toolbar.showsBaselineSeparator = false
-        window.toolbar = toolbar
 
         window.setContentSize(NSSize(width: 780, height: 520))
         window.minSize = NSSize(width: 600, height: 350)
@@ -124,13 +102,71 @@ final class AllNotesWindowController: NSWindowController {
     }
 
     func showWindow() {
+        // Install toolbar here — not in init — so self is fully initialized
+        // before the toolbar queries its delegate for items.
+        if window?.toolbar == nil {
+            let toolbar = NSToolbar(identifier: Self.toolbarID)
+            toolbar.delegate = self
+            toolbar.displayMode = .iconOnly
+            toolbar.showsBaselineSeparator = false
+            window?.toolbar = toolbar
+        }
         window?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
     }
 
-    /// Select a note in the list and show it in detail (e.g. after create).
     func selectNote(id: UUID) {
         listVC.selectNote(id: id)
         detailVC.showNote(id: id)
+    }
+
+    // MARK: - NSToolbarDelegate
+
+    func toolbar(_ toolbar: NSToolbar, itemForItemIdentifier itemIdentifier: NSToolbarItem.Identifier, willBeInsertedIntoToolbar flag: Bool) -> NSToolbarItem? {
+        switch itemIdentifier {
+
+        case Self.searchItemID:
+            let item = NSSearchToolbarItem(itemIdentifier: itemIdentifier)
+            item.searchField = listVC.searchField
+            item.preferredWidthForSearchField = 180
+            return item
+
+        case Self.createItemID:
+            let item = NSToolbarItem(itemIdentifier: itemIdentifier)
+            item.label = "New Note"
+            item.toolTip = "New Note"
+            let config = NSImage.SymbolConfiguration(pointSize: 14, weight: .medium)
+            item.image = NSImage(systemSymbolName: "plus", accessibilityDescription: "New Note")?
+                .withSymbolConfiguration(config)
+            item.target = listVC
+            item.action = #selector(AllNotesViewController.createClicked)
+            return item
+
+        case NoteDetailViewController.controlGroupID:
+            return detailVC.makeControlGroupItem()
+
+        default:
+            return nil
+        }
+    }
+
+    func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
+        [
+            Self.searchItemID,
+            Self.createItemID,
+            .sidebarTrackingSeparator,
+            .flexibleSpace,
+        ]
+    }
+
+    func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
+        [
+            Self.searchItemID,
+            Self.createItemID,
+            .sidebarTrackingSeparator,
+            .flexibleSpace,
+            .space,
+            NoteDetailViewController.controlGroupID,
+        ]
     }
 }

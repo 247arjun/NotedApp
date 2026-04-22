@@ -3,10 +3,8 @@ import AppKit
 // MARK: - NoteDetailViewController
 
 /// Detail pane for the All Notes split view.
-/// Embeds a full NoteContentView (header + editor + controls) so the user
-/// can preview and edit a note inline, including theme and delete actions.
-///
-/// Liquid Glass: Uses NSVisualEffectView with `.contentBackground` material.
+/// Embeds a NoteContentView (title + editor) with header controls hidden —
+/// the controls live in the window toolbar as a compact button group instead.
 @MainActor
 final class NoteDetailViewController: NSViewController, NoteContentViewDelegate {
 
@@ -14,8 +12,6 @@ final class NoteDetailViewController: NSViewController, NoteContentViewDelegate 
 
     var onDeleteNote: ((UUID) -> Void)?
     var onThemeChanged: ((UUID, String) -> Void)?
-    /// Called when the detail pane wants to tint the window background.
-    /// Pass nil to reset to default (no note selected).
     var onWindowColorChanged: ((NSColor?) -> Void)?
 
     // MARK: - State
@@ -26,6 +22,14 @@ final class NoteDetailViewController: NSViewController, NoteContentViewDelegate 
 
     private var noteContentView: NoteContentView?
     private let placeholderLabel = NSTextField(labelWithString: "Select a note")
+
+    // MARK: - Toolbar Item IDs
+
+    static let controlGroupID = NSToolbarItem.Identifier("NoteControlGroup")
+    static let pinItemID      = NSToolbarItem.Identifier("PinItem")
+    static let themeItemID    = NSToolbarItem.Identifier("ThemeItem")
+    static let deleteItemID   = NSToolbarItem.Identifier("DeleteItem")
+    static let closeItemID    = NSToolbarItem.Identifier("CloseItem")
 
     // MARK: - Init
 
@@ -40,12 +44,9 @@ final class NoteDetailViewController: NSViewController, NoteContentViewDelegate 
     // MARK: - Lifecycle
 
     override func loadView() {
-        // Use a plain NSView so the window's tinted backgroundColor shows through.
-        // The NoteContentView provides its own themed background.
         let root = NSView(frame: NSRect(x: 0, y: 0, width: 500, height: 500))
         root.wantsLayer = true
 
-        // Placeholder shown when no note is selected
         placeholderLabel.font = .systemFont(ofSize: 16)
         placeholderLabel.textColor = .tertiaryLabelColor
         placeholderLabel.alignment = .center
@@ -62,18 +63,16 @@ final class NoteDetailViewController: NSViewController, NoteContentViewDelegate 
 
     // MARK: - Public
 
-    /// Show the given note in the detail pane.
     func showNote(id: UUID) {
         guard let store = noteStore, let note = store.notes[id] else { return }
 
-        // If same note, just refresh content
         if currentNoteID == id, let contentView = noteContentView {
             contentView.titleField.stringValue = note.title
             contentView.updatePinState(note.isPinned)
+            refreshToolbarItems()
             return
         }
 
-        // Tear down previous
         noteContentView?.removeFromSuperview()
         noteContentView = nil
         editorCoordinator = nil
@@ -81,26 +80,22 @@ final class NoteDetailViewController: NSViewController, NoteContentViewDelegate 
         currentNoteID = id
         placeholderLabel.isHidden = true
 
-        // Build new NoteContentView
         let theme = ThemeRegistry.theme(for: note.themeID)
         let contentView = NoteContentView(noteID: id, theme: theme)
         contentView.delegate = self
+        contentView.hidesHeaderControls = true   // controls live in toolbar
         contentView.translatesAutoresizingMaskIntoConstraints = false
 
-        // Set up editor coordinator
         let coordinator = NoteEditorCoordinator(noteID: id, noteStore: store)
         contentView.textView.delegate = coordinator
         self.editorCoordinator = coordinator
 
-        // Load content
         contentView.titleField.stringValue = note.title
         contentView.loadBody(from: note.attributedBodyData)
         contentView.updatePinState(note.isPinned)
 
         view.addSubview(contentView)
 
-        // Disable rounded corners when embedded in the split view detail pane —
-        // the window chrome provides its own rounding.
         contentView.layer?.cornerRadius = 0
         contentView.layer?.masksToBounds = false
 
@@ -112,17 +107,14 @@ final class NoteDetailViewController: NSViewController, NoteContentViewDelegate 
         ])
 
         self.noteContentView = contentView
-
-        // Tint the window background with the note's theme color
         updateWindowColor(for: theme)
+        refreshToolbarItems()
 
-        // Focus editor
         DispatchQueue.main.async {
             self.view.window?.makeFirstResponder(contentView.textView)
         }
     }
 
-    /// Clear the detail pane (e.g. when note is deleted).
     func clearDetail() {
         noteContentView?.removeFromSuperview()
         noteContentView = nil
@@ -130,6 +122,102 @@ final class NoteDetailViewController: NSViewController, NoteContentViewDelegate 
         currentNoteID = nil
         placeholderLabel.isHidden = false
         onWindowColorChanged?(nil)
+        refreshToolbarItems()
+    }
+
+    // MARK: - Toolbar
+
+    /// Rebuild the toolbar to show/hide note controls based on selection.
+    func refreshToolbarItems() {
+        guard let toolbar = view.window?.toolbar else { return }
+        // Remove existing control group if present
+        if let idx = toolbar.items.firstIndex(where: { $0.itemIdentifier == Self.controlGroupID }) {
+            toolbar.removeItem(at: idx)
+        }
+        // Re-add control group if a note is selected (forces refresh of pin state etc.)
+        if currentNoteID != nil {
+            toolbar.insertItem(withItemIdentifier: Self.controlGroupID, at: toolbar.items.count)
+        }
+    }
+
+    /// Creates the NSToolbarItemGroup for pin/theme/delete/close.
+    /// Called by the window controller's toolbar delegate.
+    func makeControlGroupItem() -> NSToolbarItem {
+        let iconConfig = NSImage.SymbolConfiguration(pointSize: 13, weight: .medium)
+
+        let pinItem = NSToolbarItem(itemIdentifier: Self.pinItemID)
+        let isPinned = noteStore?.notes[currentNoteID ?? UUID()]?.isPinned ?? false
+        let pinSymbol = isPinned ? "pin.fill" : "pin"
+        pinItem.image = NSImage(systemSymbolName: pinSymbol, accessibilityDescription: isPinned ? "Unpin note" : "Pin note")?
+            .withSymbolConfiguration(iconConfig)
+        pinItem.label = "Pin"
+        pinItem.target = self
+        pinItem.action = #selector(toolbarPinClicked)
+
+        let themeItem = NSToolbarItem(itemIdentifier: Self.themeItemID)
+        themeItem.image = NSImage(systemSymbolName: "paintpalette", accessibilityDescription: "Change note color")?
+            .withSymbolConfiguration(iconConfig)
+        themeItem.label = "Color"
+        themeItem.target = self
+        themeItem.action = #selector(toolbarThemeClicked(_:))
+
+        let deleteItem = NSToolbarItem(itemIdentifier: Self.deleteItemID)
+        deleteItem.image = NSImage(systemSymbolName: "trash", accessibilityDescription: "Delete note")?
+            .withSymbolConfiguration(iconConfig)
+        deleteItem.label = "Delete"
+        deleteItem.target = self
+        deleteItem.action = #selector(toolbarDeleteClicked)
+
+        let closeItem = NSToolbarItem(itemIdentifier: Self.closeItemID)
+        closeItem.image = NSImage(systemSymbolName: "xmark", accessibilityDescription: "Close preview")?
+            .withSymbolConfiguration(iconConfig)
+        closeItem.label = "Close"
+        closeItem.target = self
+        closeItem.action = #selector(toolbarCloseClicked)
+
+        let group = NSToolbarItemGroup(itemIdentifier: Self.controlGroupID)
+        group.subitems = [pinItem, themeItem, deleteItem, closeItem]
+        group.controlRepresentation = .automatic
+        group.selectionMode = .momentary
+        group.label = "Note Actions"
+        return group
+    }
+
+    // MARK: - Toolbar Actions
+
+    @objc private func toolbarPinClicked() {
+        guard let cv = noteContentView else { return }
+        noteContentViewDidClickPin(cv)
+        refreshToolbarItems()
+    }
+
+    @objc private func toolbarThemeClicked(_ sender: Any?) {
+        // Show theme popover from toolbar — find the toolbar item's view
+        guard let cv = noteContentView else { return }
+        // Find the toolbar item view for theme
+        if let toolbarView = view.window?.toolbar?.items
+            .first(where: { $0.itemIdentifier == Self.controlGroupID })?
+            .view {
+            let popover = NSPopover()
+            popover.behavior = .transient
+            popover.contentSize = NSSize(width: 200, height: 50)
+            let pickerVC = ThemePickerViewController(currentThemeID: cv.theme.id) { [weak self] selectedID in
+                guard let self else { return }
+                popover.performClose(nil)
+                self.noteContentView(cv, didSelectTheme: selectedID)
+            }
+            popover.contentViewController = pickerVC
+            popover.show(relativeTo: toolbarView.bounds, of: toolbarView, preferredEdge: .minY)
+        }
+    }
+
+    @objc private func toolbarDeleteClicked() {
+        guard let cv = noteContentView else { return }
+        noteContentViewDidClickDelete(cv)
+    }
+
+    @objc private func toolbarCloseClicked() {
+        clearDetail()
     }
 
     // MARK: - NoteContentViewDelegate
@@ -140,7 +228,6 @@ final class NoteDetailViewController: NSViewController, NoteContentViewDelegate 
     }
 
     func noteContentViewDidClickClose(_ view: NoteContentView) {
-        // In the detail pane, "close" clears the preview
         clearDetail()
     }
 
@@ -180,8 +267,6 @@ final class NoteDetailViewController: NSViewController, NoteContentViewDelegate 
     // MARK: - Private
 
     private func updateWindowColor(for theme: NoteTheme) {
-        // Translucent tint of the note's body color — blends through the sidebar's
-        // behindWindow glass, giving the whole window a subtle colored hue.
         let tinted = theme.bodyBackgroundColor.withAlphaComponent(0.55)
         onWindowColorChanged?(tinted)
     }
