@@ -222,18 +222,18 @@ final class NoteContentView: NSView {
             titleField.centerYAnchor.constraint(equalTo: headerView.centerYAnchor),
             titleField.trailingAnchor.constraint(lessThanOrEqualTo: pinButton.leadingAnchor, constant: -8),
 
-            // Control cluster (right-to-left): [Pin][Theme][Close][Delete]
-            deleteButton.trailingAnchor.constraint(equalTo: headerView.trailingAnchor, constant: -12),
-            deleteButton.centerYAnchor.constraint(equalTo: headerView.centerYAnchor),
-            deleteButton.widthAnchor.constraint(equalToConstant: 20),
-            deleteButton.heightAnchor.constraint(equalToConstant: 20),
-
-            closeButton.trailingAnchor.constraint(equalTo: deleteButton.leadingAnchor, constant: -8),
+            // Control cluster (right-to-left): [Pin][Theme][Delete][Close]
+            closeButton.trailingAnchor.constraint(equalTo: headerView.trailingAnchor, constant: -12),
             closeButton.centerYAnchor.constraint(equalTo: headerView.centerYAnchor),
             closeButton.widthAnchor.constraint(equalToConstant: 20),
             closeButton.heightAnchor.constraint(equalToConstant: 20),
 
-            themeButton.trailingAnchor.constraint(equalTo: closeButton.leadingAnchor, constant: -8),
+            deleteButton.trailingAnchor.constraint(equalTo: closeButton.leadingAnchor, constant: -8),
+            deleteButton.centerYAnchor.constraint(equalTo: headerView.centerYAnchor),
+            deleteButton.widthAnchor.constraint(equalToConstant: 20),
+            deleteButton.heightAnchor.constraint(equalToConstant: 20),
+
+            themeButton.trailingAnchor.constraint(equalTo: deleteButton.leadingAnchor, constant: -8),
             themeButton.centerYAnchor.constraint(equalTo: headerView.centerYAnchor),
             themeButton.widthAnchor.constraint(equalToConstant: 20),
             themeButton.heightAnchor.constraint(equalToConstant: 20),

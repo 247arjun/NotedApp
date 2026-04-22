@@ -38,6 +38,19 @@ struct NoteRecord: Codable, Identifiable, Equatable {
         self.isArchived = isArchived
     }
 
+    /// Full plain-text body for search.
+    var bodyPlainText: String {
+        guard !attributedBodyData.isEmpty else { return "" }
+        if let attrStr = try? NSAttributedString(
+            data: attributedBodyData,
+            options: [.documentType: NSAttributedString.DocumentType.rtf],
+            documentAttributes: nil
+        ) {
+            return attrStr.string
+        }
+        return ""
+    }
+
     /// Plain-text excerpt extracted from the attributed body, for display in lists.
     var bodyExcerpt: String {
         guard !attributedBodyData.isEmpty else { return "" }
