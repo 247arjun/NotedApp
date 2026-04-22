@@ -47,8 +47,17 @@ final class FilePersistenceService: PersistenceService {
         }
 
         // Remove old files after successful copy
+        var failedRemovals: [URL] = []
         for file in contents {
-            try? fm.removeItem(at: file)
+            do {
+                try fm.removeItem(at: file)
+            } catch {
+                Log.persist.error("Failed to remove old file \(file.lastPathComponent): \(error.localizedDescription)")
+                failedRemovals.append(file)
+            }
+        }
+        if !failedRemovals.isEmpty {
+            Log.persist.warning("\(failedRemovals.count) old files could not be removed during migration")
         }
 
         notesDirectory = newDirectory

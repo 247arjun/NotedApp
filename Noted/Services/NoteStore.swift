@@ -142,8 +142,14 @@ final class NoteStore: ObservableObject {
         for noteID in pendingNoteIDs {
             persistImmediately(noteID)
         }
-        pendingNoteIDs.removeAll()
-        Log.persist.info("Flushed all pending saves")
+        // Don't call removeAll — persistImmediately already removes
+        // successfully saved IDs. Any remaining IDs failed to save.
+        if !pendingNoteIDs.isEmpty {
+            let remaining = pendingNoteIDs
+            Log.persist.error("Failed to flush \(remaining.count) notes: \(remaining)")
+        } else {
+            Log.persist.info("Flushed all pending saves")
+        }
     }
 
     // MARK: - Private

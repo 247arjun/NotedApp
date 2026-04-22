@@ -95,7 +95,8 @@ final class AppSettings {
 
     /// The built-in default save location.
     var defaultSaveDirectory: URL {
-        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+            ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support")
         return appSupport.appendingPathComponent("Noted/Notes", isDirectory: true)
     }
 

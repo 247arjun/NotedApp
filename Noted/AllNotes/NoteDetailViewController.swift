@@ -24,6 +24,7 @@ final class NoteDetailViewController: NSViewController, NoteContentViewDelegate 
     private var noteContentView: NoteContentView?
     private let placeholderLabel = NSTextField(labelWithString: "Select a note")
     private var storeCancellable: AnyCancellable?
+    private var themePopover: NSPopover?
 
     // MARK: - Toolbar Item IDs
 
@@ -157,13 +158,16 @@ final class NoteDetailViewController: NSViewController, NoteContentViewDelegate 
 
         // Refresh body — only if the text actually differs to avoid cursor jumps
         let currentData: Data
-        do {
-            let storage = contentView.textView.textStorage!
-            currentData = try storage.data(
-                from: NSRange(location: 0, length: storage.length),
-                documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf]
-            )
-        } catch {
+        if let storage = contentView.textView.textStorage {
+            do {
+                currentData = try storage.data(
+                    from: NSRange(location: 0, length: storage.length),
+                    documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf]
+                )
+            } catch {
+                currentData = Data()
+            }
+        } else {
             currentData = Data()
         }
 
@@ -265,16 +269,19 @@ final class NoteDetailViewController: NSViewController, NoteContentViewDelegate 
 
         // Fallback: anchor to the header of the note content view
         let targetView = anchorView ?? cv.headerView
+        themePopover?.performClose(nil)
         let popover = NSPopover()
         popover.behavior = .transient
         popover.contentSize = NSSize(width: 200, height: 50)
-        let pickerVC = ThemePickerViewController(currentThemeID: cv.theme.id) { [weak self] selectedID in
+        let pickerVC = ThemePickerViewController(currentThemeID: cv.theme.id) { [weak self, weak popover] selectedID in
             guard let self else { return }
-            popover.performClose(nil)
+            popover?.performClose(nil)
+            self.themePopover = nil
             self.noteContentView(cv, didSelectTheme: selectedID)
         }
         popover.contentViewController = pickerVC
         popover.show(relativeTo: targetView.bounds, of: targetView, preferredEdge: .minY)
+        themePopover = popover
     }
 
     @objc private func toolbarDeleteClicked() {
