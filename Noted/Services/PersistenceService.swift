@@ -13,20 +13,46 @@ protocol PersistenceService {
 
 /// File-based persistence.
 ///
-/// Layout:
-/// ```
-/// ~/Library/Application Support/Noted/Notes/
-///     {uuid}.json          – metadata (NoteRecord minus body data)
-///     {uuid}.rtf           – attributed body RTF data
-/// ```
+/// Reads the save location from `AppSettings.shared.effectiveSaveDirectory`.
+/// Supports migrating notes when the user changes the save location.
 final class FilePersistenceService: PersistenceService {
 
-    private let notesDirectory: URL
+    private var notesDirectory: URL
 
-    init() {
-        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-        notesDirectory = appSupport.appendingPathComponent("Noted/Notes", isDirectory: true)
+    init(directory: URL) {
+        notesDirectory = directory
         ensureDirectory()
+    }
+
+    /// Migrate all note files from the current directory to a new one.
+    /// Updates the internal directory pointer on success.
+    func migrateNotes(to newDirectory: URL) throws {
+        let fm = FileManager.default
+        ensureDirectory()
+
+        // Ensure destination exists
+        try fm.createDirectory(at: newDirectory, withIntermediateDirectories: true)
+
+        // Copy all files
+        let contents = try fm.contentsOfDirectory(
+            at: notesDirectory,
+            includingPropertiesForKeys: nil
+        )
+        for file in contents {
+            let dest = newDirectory.appendingPathComponent(file.lastPathComponent)
+            if fm.fileExists(atPath: dest.path) {
+                try fm.removeItem(at: dest)
+            }
+            try fm.copyItem(at: file, to: dest)
+        }
+
+        // Remove old files after successful copy
+        for file in contents {
+            try? fm.removeItem(at: file)
+        }
+
+        notesDirectory = newDirectory
+        Log.persist.info("Migrated notes to \(newDirectory.path)")
     }
 
     // MARK: - Load

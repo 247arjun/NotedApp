@@ -21,6 +21,7 @@ final class AllNotesWindowController: NSWindowController, NSToolbarDelegate {
     private static let toolbarID       = NSToolbar.Identifier("AllNotesToolbar")
     private static let searchItemID    = NSToolbarItem.Identifier("SearchItem")
     private static let createItemID    = NSToolbarItem.Identifier("CreateItem")
+    private static let sortItemID      = NSToolbarItem.Identifier("SortItem")
 
     convenience init(
         noteStore: NoteStore,
@@ -142,6 +143,28 @@ final class AllNotesWindowController: NSWindowController, NSToolbarDelegate {
             item.action = #selector(AllNotesViewController.createClicked)
             return item
 
+        case Self.sortItemID:
+            let item = NSMenuToolbarItem(itemIdentifier: itemIdentifier)
+            item.label = "Sort"
+            item.toolTip = "Sort notes"
+            let sortConfig = NSImage.SymbolConfiguration(pointSize: 14, weight: .medium)
+            item.image = NSImage(systemSymbolName: "arrow.up.arrow.down", accessibilityDescription: "Sort")?
+                .withSymbolConfiguration(sortConfig)
+            item.showsIndicator = true
+            let sortMenu = NSMenu()
+            for mode in NoteSortMode.allCases {
+                let mi = NSMenuItem(title: mode.displayName, action: #selector(sortModeSelected(_:)), keyEquivalent: "")
+                mi.target = self
+                mi.tag = mode.rawValue
+                mi.image = NSImage(systemSymbolName: mode.iconName, accessibilityDescription: nil)
+                if mode == listVC.sortMode {
+                    mi.state = .on
+                }
+                sortMenu.addItem(mi)
+            }
+            item.menu = sortMenu
+            return item
+
         case NoteDetailViewController.controlGroupID:
             return detailVC.makeControlGroupItem()
 
@@ -154,6 +177,7 @@ final class AllNotesWindowController: NSWindowController, NSToolbarDelegate {
         [
             Self.searchItemID,
             Self.createItemID,
+            Self.sortItemID,
             .sidebarTrackingSeparator,
             .flexibleSpace,
         ]
@@ -163,10 +187,24 @@ final class AllNotesWindowController: NSWindowController, NSToolbarDelegate {
         [
             Self.searchItemID,
             Self.createItemID,
+            Self.sortItemID,
             .sidebarTrackingSeparator,
             .flexibleSpace,
             .space,
             NoteDetailViewController.controlGroupID,
         ]
+    }
+
+    // MARK: - Sort Action
+
+    @objc private func sortModeSelected(_ sender: NSMenuItem) {
+        guard let mode = NoteSortMode(rawValue: sender.tag) else { return }
+        listVC.sortMode = mode
+        // Update menu checkmarks
+        if let sortItem = window?.toolbar?.items.first(where: { $0.itemIdentifier == Self.sortItemID }) as? NSMenuToolbarItem {
+            for mi in sortItem.menu.items {
+                mi.state = mi.tag == mode.rawValue ? .on : .off
+            }
+        }
     }
 }

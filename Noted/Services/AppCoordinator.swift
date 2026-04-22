@@ -18,7 +18,7 @@ final class AppCoordinator: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
 
     private init() {
-        let persistence = FilePersistenceService()
+        let persistence = FilePersistenceService(directory: AppSettings.shared.effectiveSaveDirectory)
         let store = NoteStore(persistenceService: persistence)
 
         self.persistenceService = persistence
@@ -31,6 +31,7 @@ final class AppCoordinator: ObservableObject {
     /// Called on applicationDidFinishLaunching.
     func start() {
         noteStore.loadAll()
+        let behavior = AppSettings.shared.launchBehavior
 
         if noteStore.notes.isEmpty {
             // First launch: create a welcome note and show All Notes
@@ -38,8 +39,15 @@ final class AppCoordinator: ObservableObject {
             showAllNotes()
             windowManager.openNewNoteWindow(noteID: note.id)
         } else {
-            windowManager.restoreAllWindows()
-            showAllNotes()
+            switch behavior {
+            case .allNotesAndRestore:
+                windowManager.restoreAllWindows()
+                showAllNotes()
+            case .allNotesOnly:
+                showAllNotes()
+            case .restoreOnly:
+                windowManager.restoreAllWindows()
+            }
         }
     }
 

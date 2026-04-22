@@ -43,7 +43,8 @@ final class NoteTextView: NSTextView {
     }
 
     func applyTheme(_ theme: NoteTheme) {
-        let font = NSFont.systemFont(ofSize: 15, weight: .regular)
+        let settings = AppSettings.shared
+        let font = settings.defaultFont
         let paragraphStyle = NSMutableParagraphStyle()
         paragraphStyle.lineSpacing = 2
         paragraphStyle.paragraphSpacing = 4

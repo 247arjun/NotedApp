@@ -13,6 +13,7 @@ struct NoteRecord: Codable, Identifiable, Equatable {
     var updatedAt: Date
     var isClosed: Bool
     var isArchived: Bool
+    var manualSortOrder: Int
 
     init(
         id: UUID = UUID(),
@@ -24,7 +25,8 @@ struct NoteRecord: Codable, Identifiable, Equatable {
         createdAt: Date = Date(),
         updatedAt: Date = Date(),
         isClosed: Bool = false,
-        isArchived: Bool = false
+        isArchived: Bool = false,
+        manualSortOrder: Int = 0
     ) {
         self.id = id
         self.title = title
@@ -36,6 +38,7 @@ struct NoteRecord: Codable, Identifiable, Equatable {
         self.updatedAt = updatedAt
         self.isClosed = isClosed
         self.isArchived = isArchived
+        self.manualSortOrder = manualSortOrder
     }
 
     /// Full plain-text body for search.

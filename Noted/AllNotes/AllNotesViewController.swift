@@ -1,23 +1,48 @@
 import AppKit
 import Combine
 
+// MARK: - NoteSortMode
+
+enum NoteSortMode: Int, CaseIterable {
+    case updatedDate = 0
+    case createdDate = 1
+    case titleAZ = 2
+    case titleZA = 3
+    case manual = 4
+
+    var displayName: String {
+        switch self {
+        case .updatedDate: return "Date Modified"
+        case .createdDate: return "Date Created"
+        case .titleAZ:     return "Title (A→Z)"
+        case .titleZA:     return "Title (Z→A)"
+        case .manual:      return "Manual"
+        }
+    }
+
+    var iconName: String {
+        switch self {
+        case .updatedDate: return "clock"
+        case .createdDate: return "calendar"
+        case .titleAZ:     return "textformat.abc"
+        case .titleZA:     return "textformat.abc"
+        case .manual:      return "hand.draw"
+        }
+    }
+}
+
+// MARK: - Drag type
+
+private let noteRowDragType = NSPasteboard.PasteboardType("com.noted.note-row")
+
 // MARK: - AllNotesViewController
 
-/// Pure AppKit implementation of the All Notes list.
-///
-/// Liquid Glass design:
-/// - `NSVisualEffectView` with `.sidebar` material as the window background
-///   for the translucent glass effect.
-/// - `NSToolbar` for the search field and actions — toolbars automatically
-///   adopt Liquid Glass on macOS 26.
-/// - Transparent table view so the material shows through between rows.
-/// - Vibrant label colors for text legibility on translucent backgrounds.
 final class AllNotesViewController: NSViewController, NSTableViewDataSource, NSTableViewDelegate, NSSearchFieldDelegate {
 
     // MARK: - Callbacks
 
-    var onSelectNote: ((UUID) -> Void)?   // single click → preview in detail
-    var onOpenNote: ((UUID) -> Void)?     // double click → standalone window
+    var onSelectNote: ((UUID) -> Void)?
+    var onOpenNote: ((UUID) -> Void)?
     var onDeleteNote: ((UUID) -> Void)?
     var onCreateNote: (() -> Void)?
     var isWindowOpen: ((UUID) -> Bool)?
@@ -26,8 +51,24 @@ final class AllNotesViewController: NSViewController, NSTableViewDataSource, NST
 
     private weak var noteStore: NoteStore?
     private var cancellable: AnyCancellable?
-    private var filteredNotes: [NoteRecord] = []
     private var searchText: String = ""
+
+    /// Pinned notes (section 0)
+    private var pinnedNotes: [NoteRecord] = []
+    /// Unpinned notes (section 1)
+    private var otherNotes: [NoteRecord] = []
+
+    /// Flat list for table view (section headers are nil entries).
+    /// Layout: [pinned-header?, pinned..., other-header?, other...]
+    private enum RowItem {
+        case sectionHeader(String)
+        case note(NoteRecord)
+    }
+    private var rows: [RowItem] = []
+
+    var sortMode: NoteSortMode = .updatedDate {
+        didSet { reloadData() }
+    }
 
     // MARK: - Subviews
 
@@ -53,16 +94,12 @@ final class AllNotesViewController: NSViewController, NSTableViewDataSource, NST
     // MARK: - Lifecycle
 
     override func loadView() {
-        // Plain NSView — the NSSplitViewItem(sidebarWithViewController:)
-        // provides the Liquid Glass sidebar material automatically.
         let root = NSView(frame: NSRect(x: 0, y: 0, width: 280, height: 500))
 
-        // Search field (hosted in toolbar, configured here for delegate)
         searchField.placeholderString = "Search notes…"
         searchField.delegate = self
         searchField.sendsSearchStringImmediately = true
 
-        // ── Table view ──
         let column = NSTableColumn(identifier: Self.noteColumnID)
         column.title = ""
         column.resizingMask = .autoresizingMask
@@ -78,6 +115,10 @@ final class AllNotesViewController: NSViewController, NSTableViewDataSource, NST
         tableView.menu = buildContextMenu()
         tableView.backgroundColor = .clear
 
+        // Drag & drop
+        tableView.registerForDraggedTypes([noteRowDragType])
+        tableView.setDraggingSourceOperationMask(.move, forLocal: true)
+
         scrollView.documentView = tableView
         scrollView.hasVerticalScroller = true
         scrollView.autohidesScrollers = true
@@ -86,7 +127,6 @@ final class AllNotesViewController: NSViewController, NSTableViewDataSource, NST
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         root.addSubview(scrollView)
 
-        // Empty state label
         emptyLabel.font = .systemFont(ofSize: 14)
         emptyLabel.textColor = .secondaryLabelColor
         emptyLabel.alignment = .center
@@ -99,7 +139,6 @@ final class AllNotesViewController: NSViewController, NSTableViewDataSource, NST
             scrollView.leadingAnchor.constraint(equalTo: root.leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: root.trailingAnchor),
             scrollView.bottomAnchor.constraint(equalTo: root.bottomAnchor),
-
             emptyLabel.centerXAnchor.constraint(equalTo: root.centerXAnchor),
             emptyLabel.centerYAnchor.constraint(equalTo: scrollView.centerYAnchor),
         ])
@@ -122,20 +161,36 @@ final class AllNotesViewController: NSViewController, NSTableViewDataSource, NST
 
     private func reloadData() {
         guard let store = noteStore else { return }
-        let all = store.notes.values
-            .filter { !$0.isArchived }
-            .sorted { $0.updatedAt > $1.updatedAt }
+        var all = Array(store.notes.values.filter { !$0.isArchived })
 
-        if searchText.isEmpty {
-            filteredNotes = Array(all)
-        } else {
-            filteredNotes = all.filter { note in
+        // Filter
+        if !searchText.isEmpty {
+            all = all.filter { note in
                 note.title.localizedCaseInsensitiveContains(searchText)
                 || note.bodyPlainText.localizedCaseInsensitiveContains(searchText)
             }
         }
 
-        let isEmpty = filteredNotes.isEmpty
+        // Sort
+        let sorted = sortNotes(all)
+
+        // Split into sections
+        pinnedNotes = sorted.filter { $0.isPinned }
+        otherNotes  = sorted.filter { !$0.isPinned }
+
+        // Build flat row list
+        rows = []
+        if !pinnedNotes.isEmpty {
+            rows.append(.sectionHeader("Pinned"))
+            rows.append(contentsOf: pinnedNotes.map { .note($0) })
+        }
+        if !otherNotes.isEmpty {
+            let headerTitle = pinnedNotes.isEmpty ? "Notes" : "Others"
+            rows.append(.sectionHeader(headerTitle))
+            rows.append(contentsOf: otherNotes.map { .note($0) })
+        }
+
+        let isEmpty = pinnedNotes.isEmpty && otherNotes.isEmpty
         emptyLabel.isHidden = !isEmpty
         emptyLabel.stringValue = searchText.isEmpty ? "No notes yet" : "No matching notes"
         scrollView.isHidden = isEmpty
@@ -143,39 +198,180 @@ final class AllNotesViewController: NSViewController, NSTableViewDataSource, NST
         tableView.reloadData()
     }
 
-    /// Programmatically select a note in the list (e.g. after create).
+    private func sortNotes(_ notes: [NoteRecord]) -> [NoteRecord] {
+        switch sortMode {
+        case .updatedDate:
+            return notes.sorted { $0.updatedAt > $1.updatedAt }
+        case .createdDate:
+            return notes.sorted { $0.createdAt > $1.createdAt }
+        case .titleAZ:
+            return notes.sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
+        case .titleZA:
+            return notes.sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedDescending }
+        case .manual:
+            return notes.sorted { $0.manualSortOrder < $1.manualSortOrder }
+        }
+    }
+
     func selectNote(id: UUID) {
-        guard let idx = filteredNotes.firstIndex(where: { $0.id == id }) else { return }
+        guard let idx = rows.firstIndex(where: {
+            if case .note(let n) = $0 { return n.id == id }
+            return false
+        }) else { return }
         tableView.selectRowIndexes(IndexSet(integer: idx), byExtendingSelection: false)
         tableView.scrollRowToVisible(idx)
+    }
+
+    private func noteAt(row: Int) -> NoteRecord? {
+        guard row >= 0, row < rows.count else { return nil }
+        if case .note(let note) = rows[row] { return note }
+        return nil
     }
 
     // MARK: - NSTableViewDataSource
 
     func numberOfRows(in tableView: NSTableView) -> Int {
-        filteredNotes.count
+        rows.count
     }
 
     // MARK: - NSTableViewDelegate
 
     func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
-        guard row < filteredNotes.count else { return nil }
-        let note = filteredNotes[row]
-        let cellID = NSUserInterfaceItemIdentifier("NoteCell")
-        let cell = (tableView.makeView(withIdentifier: cellID, owner: nil) as? AllNotesCellView)
-            ?? AllNotesCellView(identifier: cellID)
-        cell.configure(with: note, isOpen: isWindowOpen?(note.id) ?? false)
-        return cell
+        guard row < rows.count else { return nil }
+
+        switch rows[row] {
+        case .sectionHeader(let title):
+            let headerID = NSUserInterfaceItemIdentifier("SectionHeader")
+            let header = (tableView.makeView(withIdentifier: headerID, owner: nil) as? NSTextField)
+                ?? {
+                    let h = NSTextField(labelWithString: "")
+                    h.identifier = headerID
+                    h.font = .systemFont(ofSize: 11, weight: .semibold)
+                    h.textColor = .secondaryLabelColor
+                    return h
+                }()
+            header.stringValue = title.uppercased()
+            return header
+
+        case .note(let note):
+            let cellID = NSUserInterfaceItemIdentifier("NoteCell")
+            let cell = (tableView.makeView(withIdentifier: cellID, owner: nil) as? AllNotesCellView)
+                ?? AllNotesCellView(identifier: cellID)
+            cell.configure(with: note, isOpen: isWindowOpen?(note.id) ?? false)
+            return cell
+        }
     }
 
     func tableView(_ tableView: NSTableView, heightOfRow row: Int) -> CGFloat {
-        68
+        guard row < rows.count else { return 68 }
+        if case .sectionHeader = rows[row] { return 28 }
+        return 68
+    }
+
+    func tableView(_ tableView: NSTableView, isGroupRow row: Int) -> Bool {
+        guard row < rows.count else { return false }
+        if case .sectionHeader = rows[row] { return true }
+        return false
+    }
+
+    func tableView(_ tableView: NSTableView, shouldSelectRow row: Int) -> Bool {
+        guard row < rows.count else { return false }
+        if case .sectionHeader = rows[row] { return false }
+        return true
     }
 
     func tableViewSelectionDidChange(_ notification: Notification) {
-        let row = tableView.selectedRow
-        guard row >= 0, row < filteredNotes.count else { return }
-        onSelectNote?(filteredNotes[row].id)
+        guard let note = noteAt(row: tableView.selectedRow) else { return }
+        onSelectNote?(note.id)
+    }
+
+    // MARK: - Swipe Actions
+
+    func tableView(_ tableView: NSTableView, rowActionsForRow row: Int, edge: NSTableView.RowActionEdge) -> [NSTableViewRowAction] {
+        guard let note = noteAt(row: row) else { return [] }
+
+        switch edge {
+        case .trailing:
+            // Swipe left → Delete
+            let delete = NSTableViewRowAction(style: .destructive, title: "Delete") { [weak self] _, _ in
+                self?.onDeleteNote?(note.id)
+            }
+            delete.backgroundColor = .systemRed
+            return [delete]
+
+        case .leading:
+            // Swipe right → Pin/Unpin
+            let isPinned = note.isPinned
+            let title = isPinned ? "Unpin" : "Pin"
+            let pin = NSTableViewRowAction(style: .regular, title: title) { [weak self] _, _ in
+                self?.noteStore?.updatePinned(noteID: note.id, isPinned: !isPinned)
+            }
+            pin.backgroundColor = .systemOrange
+            return [pin]
+
+        @unknown default:
+            return []
+        }
+    }
+
+    // MARK: - Drag & Drop
+
+    func tableView(_ tableView: NSTableView, pasteboardWriterForRow row: Int) -> (any NSPasteboardWriting)? {
+        // Allow dragging for note rows in any sort mode
+        guard let note = noteAt(row: row) else { return nil }
+        let item = NSPasteboardItem()
+        item.setString(note.id.uuidString, forType: noteRowDragType)
+        return item
+    }
+
+    func tableView(_ tableView: NSTableView, validateDrop info: any NSDraggingInfo, proposedRow row: Int, proposedDropOperation dropOperation: NSTableView.DropOperation) -> NSDragOperation {
+        if dropOperation == .above { return .move }
+        return []
+    }
+
+    func tableView(_ tableView: NSTableView, acceptDrop info: any NSDraggingInfo, row: Int, dropOperation: NSTableView.DropOperation) -> Bool {
+        guard let store = noteStore,
+              let idString = info.draggingPasteboard.string(forType: noteRowDragType),
+              let draggedID = UUID(uuidString: idString),
+              let draggedNote = store.notes[draggedID] else { return false }
+
+        // Determine which section the dragged note belongs to
+        let isPinned = draggedNote.isPinned
+        var targetList = isPinned ? pinnedNotes : otherNotes
+
+        // Find the insert position within that section
+        var targetIndex = targetList.count
+
+        if row < rows.count, let targetNote = noteAt(row: row) {
+            // Only reorder within the same section (pinned↔pinned, other↔other)
+            if targetNote.isPinned == isPinned {
+                if let idx = targetList.firstIndex(where: { $0.id == targetNote.id }) {
+                    targetIndex = idx
+                }
+            }
+        } else if row > 0, let prevNote = noteAt(row: row - 1) {
+            // Dropping at the end of a section
+            if prevNote.isPinned == isPinned {
+                targetIndex = targetList.count
+            }
+        }
+
+        // Remove dragged note and reinsert at target position
+        targetList.removeAll { $0.id == draggedID }
+        targetList.insert(draggedNote, at: min(targetIndex, targetList.count))
+
+        // Reassign ordinal sort orders for the entire section
+        for (i, note) in targetList.enumerated() {
+            store.updateManualSortOrder(noteID: note.id, order: i)
+        }
+
+        // Switch to manual sort mode so the new order is visible
+        if sortMode != .manual {
+            sortMode = .manual
+        } else {
+            reloadData()
+        }
+        return true
     }
 
     // MARK: - NSSearchFieldDelegate
@@ -192,28 +388,33 @@ final class AllNotesViewController: NSViewController, NSTableViewDataSource, NST
     }
 
     @objc private func rowDoubleClicked() {
-        let row = tableView.clickedRow
-        guard row >= 0, row < filteredNotes.count else { return }
-        onOpenNote?(filteredNotes[row].id)
+        guard let note = noteAt(row: tableView.clickedRow) else { return }
+        onOpenNote?(note.id)
     }
 
     @objc private func contextOpen(_ sender: Any?) {
-        let row = tableView.clickedRow
-        guard row >= 0, row < filteredNotes.count else { return }
-        onOpenNote?(filteredNotes[row].id)
+        guard let note = noteAt(row: tableView.clickedRow) else { return }
+        onOpenNote?(note.id)
     }
 
     @objc private func contextDelete(_ sender: Any?) {
-        let row = tableView.clickedRow
-        guard row >= 0, row < filteredNotes.count else { return }
-        onDeleteNote?(filteredNotes[row].id)
+        guard let note = noteAt(row: tableView.clickedRow) else { return }
+        onDeleteNote?(note.id)
+    }
+
+    @objc private func contextPin(_ sender: Any?) {
+        guard let note = noteAt(row: tableView.clickedRow) else { return }
+        noteStore?.updatePinned(noteID: note.id, isPinned: !note.isPinned)
     }
 
     // MARK: - Context Menu
 
     private func buildContextMenu() -> NSMenu {
         let menu = NSMenu()
-        menu.addItem(withTitle: "Open", action: #selector(contextOpen(_:)), keyEquivalent: "").target = self
+        menu.addItem(withTitle: "Open in Window", action: #selector(contextOpen(_:)), keyEquivalent: "").target = self
+        menu.addItem(.separator())
+        let pinItem = menu.addItem(withTitle: "Pin / Unpin", action: #selector(contextPin(_:)), keyEquivalent: "")
+        pinItem.target = self
         menu.addItem(.separator())
         let deleteItem = menu.addItem(withTitle: "Delete", action: #selector(contextDelete(_:)), keyEquivalent: "")
         deleteItem.target = self
@@ -223,8 +424,6 @@ final class AllNotesViewController: NSViewController, NSTableViewDataSource, NST
 
 // MARK: - AllNotesCellView
 
-/// A table cell with theme swatch, title, excerpt, timestamp, pin & open-state indicators.
-/// Uses vibrant label colors for Liquid Glass legibility.
 final class AllNotesCellView: NSTableCellView {
 
     private let swatchView = NSView(frame: .zero)
@@ -232,7 +431,6 @@ final class AllNotesCellView: NSTableCellView {
     private let excerptLabel = NSTextField(labelWithString: "")
     private let timestampLabel = NSTextField(labelWithString: "")
     private let pinImage = NSImageView()
-    private let closedImage = NSImageView()
 
     init(identifier: NSUserInterfaceItemIdentifier) {
         super.init(frame: .zero)
@@ -275,15 +473,6 @@ final class AllNotesCellView: NSTableCellView {
         timestampLabel.translatesAutoresizingMaskIntoConstraints = false
         addSubview(timestampLabel)
 
-        let closedConfig = NSImage.SymbolConfiguration(pointSize: 10, weight: .regular)
-        closedImage.image = NSImage(systemSymbolName: "eye.slash", accessibilityDescription: "Window closed")?
-            .withSymbolConfiguration(closedConfig)
-        closedImage.contentTintColor = .quaternaryLabelColor
-        closedImage.toolTip = "Window closed"
-        closedImage.translatesAutoresizingMaskIntoConstraints = false
-        closedImage.isHidden = true
-        addSubview(closedImage)
-
         NSLayoutConstraint.activate([
             swatchView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
             swatchView.centerYAnchor.constraint(equalTo: centerYAnchor),
@@ -292,23 +481,19 @@ final class AllNotesCellView: NSTableCellView {
 
             titleLabel.topAnchor.constraint(equalTo: topAnchor, constant: 8),
             titleLabel.leadingAnchor.constraint(equalTo: swatchView.trailingAnchor, constant: 10),
+            titleLabel.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -12),
 
             pinImage.centerYAnchor.constraint(equalTo: titleLabel.centerYAnchor),
             pinImage.leadingAnchor.constraint(equalTo: titleLabel.trailingAnchor, constant: 4),
             pinImage.widthAnchor.constraint(equalToConstant: 12),
 
-            closedImage.centerYAnchor.constraint(equalTo: centerYAnchor),
-            closedImage.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
-
-            titleLabel.trailingAnchor.constraint(lessThanOrEqualTo: closedImage.leadingAnchor, constant: -8),
-
             excerptLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 2),
             excerptLabel.leadingAnchor.constraint(equalTo: titleLabel.leadingAnchor),
-            excerptLabel.trailingAnchor.constraint(equalTo: closedImage.leadingAnchor, constant: -8),
+            excerptLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -12),
 
             timestampLabel.topAnchor.constraint(equalTo: excerptLabel.bottomAnchor, constant: 2),
             timestampLabel.leadingAnchor.constraint(equalTo: titleLabel.leadingAnchor),
-            timestampLabel.trailingAnchor.constraint(lessThanOrEqualTo: closedImage.leadingAnchor, constant: -8),
+            timestampLabel.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -12),
             timestampLabel.bottomAnchor.constraint(lessThanOrEqualTo: bottomAnchor, constant: -6),
         ])
     }
@@ -326,7 +511,6 @@ final class AllNotesCellView: NSTableCellView {
         }
 
         pinImage.isHidden = !note.isPinned
-        closedImage.isHidden = isOpen
 
         excerptLabel.stringValue = note.bodyExcerpt
         excerptLabel.isHidden = note.bodyExcerpt.isEmpty

@@ -249,23 +249,32 @@ final class NoteDetailViewController: NSViewController, NoteContentViewDelegate 
     }
 
     @objc private func toolbarThemeClicked(_ sender: Any?) {
-        // Show theme popover from toolbar — find the toolbar item's view
         guard let cv = noteContentView else { return }
-        // Find the toolbar item view for theme
-        if let toolbarView = view.window?.toolbar?.items
-            .first(where: { $0.itemIdentifier == Self.controlGroupID })?
-            .view {
-            let popover = NSPopover()
-            popover.behavior = .transient
-            popover.contentSize = NSSize(width: 200, height: 50)
-            let pickerVC = ThemePickerViewController(currentThemeID: cv.theme.id) { [weak self] selectedID in
-                guard let self else { return }
-                popover.performClose(nil)
-                self.noteContentView(cv, didSelectTheme: selectedID)
+
+        // Find the toolbar group's view to anchor the popover.
+        // NSToolbarItemGroup renders as a segmented control — look for its view.
+        var anchorView: NSView?
+        if let toolbar = view.window?.toolbar {
+            for item in toolbar.items where item.itemIdentifier == Self.controlGroupID {
+                if let groupView = item.view {
+                    anchorView = groupView
+                    break
+                }
             }
-            popover.contentViewController = pickerVC
-            popover.show(relativeTo: toolbarView.bounds, of: toolbarView, preferredEdge: .minY)
         }
+
+        // Fallback: anchor to the header of the note content view
+        let targetView = anchorView ?? cv.headerView
+        let popover = NSPopover()
+        popover.behavior = .transient
+        popover.contentSize = NSSize(width: 200, height: 50)
+        let pickerVC = ThemePickerViewController(currentThemeID: cv.theme.id) { [weak self] selectedID in
+            guard let self else { return }
+            popover.performClose(nil)
+            self.noteContentView(cv, didSelectTheme: selectedID)
+        }
+        popover.contentViewController = pickerVC
+        popover.show(relativeTo: targetView.bounds, of: targetView, preferredEdge: .minY)
     }
 
     @objc private func toolbarDeleteClicked() {
@@ -324,7 +333,7 @@ final class NoteDetailViewController: NSViewController, NoteContentViewDelegate 
     // MARK: - Private
 
     private func updateWindowColor(for theme: NoteTheme) {
-        let tinted = theme.bodyBackgroundColor.withAlphaComponent(0.55)
+        let tinted = theme.bodyBackgroundColor.withAlphaComponent(0.85)
         onWindowColorChanged?(tinted)
     }
 }

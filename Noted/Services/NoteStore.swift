@@ -45,7 +45,10 @@ final class NoteStore: ObservableObject {
 
     @discardableResult
     func createNote(frame: PersistedRect = .default) -> NoteRecord {
-        let note = NoteRecord(frame: frame)
+        // Assign ordinal manualSortOrder: next available index
+        let maxOrder = notes.values.map(\.manualSortOrder).max() ?? -1
+        var note = NoteRecord(themeID: AppSettings.shared.defaultThemeID, frame: frame)
+        note.manualSortOrder = maxOrder + 1
         notes[note.id] = note
         persistImmediately(note.id)
         Log.note.info("Created note \(note.id)")
@@ -99,6 +102,13 @@ final class NoteStore: ObservableObject {
         guard var note = notes[noteID] else { return }
         note.isClosed = isClosed
         note.updatedAt = Date()
+        notes[noteID] = note
+        persistImmediately(noteID)
+    }
+
+    func updateManualSortOrder(noteID: UUID, order: Int) {
+        guard var note = notes[noteID] else { return }
+        note.manualSortOrder = order
         notes[noteID] = note
         persistImmediately(noteID)
     }
