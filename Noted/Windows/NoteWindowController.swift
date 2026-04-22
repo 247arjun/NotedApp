@@ -4,6 +4,7 @@ import AppKit
 
 /// Manages one note window. Coordinates between the content view, the editor,
 /// and the note store.
+@MainActor
 final class NoteWindowController: NSWindowController, NSWindowDelegate {
 
     let noteID: UUID

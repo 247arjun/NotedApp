@@ -3,6 +3,7 @@ import AppKit
 // MARK: - WindowManager
 
 /// Creates, tracks, and manages NoteWindowController instances.
+@MainActor
 final class WindowManager {
 
     private var controllers: [UUID: NoteWindowController] = [:]

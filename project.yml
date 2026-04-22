@@ -2,14 +2,14 @@ name: Noted
 options:
   bundleIdPrefix: com.noted
   deploymentTarget:
-    macOS: "14.0"
-  xcodeVersion: "16.0"
+    macOS: "26.0"
+  xcodeVersion: "26.0"
   generateEmptyDirectories: true
   groupSortPosition: top
 
 settings:
-  SWIFT_VERSION: "5.10"
-  MACOSX_DEPLOYMENT_TARGET: "14.0"
+  SWIFT_VERSION: "6.2"
+  MACOSX_DEPLOYMENT_TARGET: "26.0"
 
 targets:
   Noted:

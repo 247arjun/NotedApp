@@ -2,6 +2,7 @@ import AppKit
 
 // MARK: - NoteContentViewDelegate
 
+@MainActor
 protocol NoteContentViewDelegate: AnyObject {
     func noteContentView(_ view: NoteContentView, didCommitTitle title: String)
     func noteContentViewDidClickClose(_ view: NoteContentView)

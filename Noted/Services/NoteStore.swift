@@ -5,6 +5,7 @@ import Combine
 
 /// Single source of truth for all note data.
 /// Publishes changes via `@Published` for observation.
+@MainActor
 final class NoteStore: ObservableObject {
 
     @Published private(set) var notes: [UUID: NoteRecord] = [:]

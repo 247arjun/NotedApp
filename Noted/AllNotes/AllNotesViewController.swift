@@ -4,8 +4,15 @@ import Combine
 // MARK: - AllNotesViewController
 
 /// Pure AppKit implementation of the All Notes list.
-/// Uses NSTableView with a search field, create button, and context menus.
-final class AllNotesViewController: NSViewController, NSTableViewDataSource, NSTableViewDelegate, NSSearchFieldDelegate {
+///
+/// Liquid Glass design:
+/// - `NSVisualEffectView` with `.sidebar` material as the window background
+///   for the translucent glass effect.
+/// - `NSToolbar` for the search field and actions — toolbars automatically
+///   adopt Liquid Glass on macOS 26.
+/// - Transparent table view so the material shows through between rows.
+/// - Vibrant label colors for text legibility on translucent backgrounds.
+final class AllNotesViewController: NSViewController, NSTableViewDataSource, NSTableViewDelegate, NSSearchFieldDelegate, NSToolbarDelegate {
 
     // MARK: - Callbacks
 
@@ -26,12 +33,14 @@ final class AllNotesViewController: NSViewController, NSTableViewDataSource, NST
     private let searchField = NSSearchField()
     private let scrollView = NSScrollView()
     private let tableView = NSTableView()
-    private let createButton = NSButton()
     private let emptyLabel = NSTextField(labelWithString: "No notes yet")
 
-    // MARK: - Column IDs
+    // MARK: - Identifiers
 
     private static let noteColumnID = NSUserInterfaceItemIdentifier("NoteColumn")
+    private static let toolbarID    = NSToolbar.Identifier("AllNotesToolbar")
+    private static let searchItemID = NSToolbarItem.Identifier("SearchItem")
+    private static let createItemID = NSToolbarItem.Identifier("CreateItem")
 
     // MARK: - Init
 
@@ -46,33 +55,16 @@ final class AllNotesViewController: NSViewController, NSTableViewDataSource, NST
     // MARK: - Lifecycle
 
     override func loadView() {
-        let root = NSView(frame: NSRect(x: 0, y: 0, width: 400, height: 500))
-        root.wantsLayer = true
+        // Root: NSVisualEffectView with sidebar material for Liquid Glass background
+        let effectView = NSVisualEffectView(frame: NSRect(x: 0, y: 0, width: 400, height: 500))
+        effectView.material = .sidebar
+        effectView.blendingMode = .behindWindow
+        effectView.state = .followsWindowActiveState
 
-        // Header: title + create button
-        let titleLabel = NSTextField(labelWithString: "All Notes")
-        titleLabel.font = .systemFont(ofSize: 16, weight: .semibold)
-        titleLabel.translatesAutoresizingMaskIntoConstraints = false
-        root.addSubview(titleLabel)
-
-        let config = NSImage.SymbolConfiguration(pointSize: 14, weight: .medium)
-        createButton.image = NSImage(systemSymbolName: "plus", accessibilityDescription: "New Note")?
-            .withSymbolConfiguration(config)
-        createButton.isBordered = false
-        createButton.bezelStyle = .inline
-        createButton.target = self
-        createButton.action = #selector(createClicked)
-        createButton.setAccessibilityLabel("New Note")
-        createButton.toolTip = "New Note"
-        createButton.translatesAutoresizingMaskIntoConstraints = false
-        root.addSubview(createButton)
-
-        // Search field
+        // Search field (used in toolbar, but also available for empty-state)
         searchField.placeholderString = "Search notes…"
         searchField.delegate = self
         searchField.sendsSearchStringImmediately = true
-        searchField.translatesAutoresizingMaskIntoConstraints = false
-        root.addSubview(searchField)
 
         // Table view
         let column = NSTableColumn(identifier: Self.noteColumnID)
@@ -88,55 +80,101 @@ final class AllNotesViewController: NSViewController, NSTableViewDataSource, NST
         tableView.doubleAction = #selector(rowDoubleClicked)
         tableView.target = self
         tableView.menu = buildContextMenu()
+        tableView.backgroundColor = .clear
 
         scrollView.documentView = tableView
         scrollView.hasVerticalScroller = true
         scrollView.autohidesScrollers = true
         scrollView.drawsBackground = false
+        scrollView.contentView.drawsBackground = false
         scrollView.translatesAutoresizingMaskIntoConstraints = false
-        root.addSubview(scrollView)
+        effectView.addSubview(scrollView)
 
-        // Empty state
+        // Empty state label
         emptyLabel.font = .systemFont(ofSize: 14)
         emptyLabel.textColor = .secondaryLabelColor
         emptyLabel.alignment = .center
         emptyLabel.isHidden = true
         emptyLabel.translatesAutoresizingMaskIntoConstraints = false
-        root.addSubview(emptyLabel)
+        effectView.addSubview(emptyLabel)
 
         NSLayoutConstraint.activate([
-            titleLabel.topAnchor.constraint(equalTo: root.topAnchor, constant: 12),
-            titleLabel.leadingAnchor.constraint(equalTo: root.leadingAnchor, constant: 16),
+            scrollView.topAnchor.constraint(equalTo: effectView.topAnchor),
+            scrollView.leadingAnchor.constraint(equalTo: effectView.leadingAnchor),
+            scrollView.trailingAnchor.constraint(equalTo: effectView.trailingAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: effectView.bottomAnchor),
 
-            createButton.centerYAnchor.constraint(equalTo: titleLabel.centerYAnchor),
-            createButton.trailingAnchor.constraint(equalTo: root.trailingAnchor, constant: -16),
-
-            searchField.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 10),
-            searchField.leadingAnchor.constraint(equalTo: root.leadingAnchor, constant: 16),
-            searchField.trailingAnchor.constraint(equalTo: root.trailingAnchor, constant: -16),
-
-            scrollView.topAnchor.constraint(equalTo: searchField.bottomAnchor, constant: 8),
-            scrollView.leadingAnchor.constraint(equalTo: root.leadingAnchor),
-            scrollView.trailingAnchor.constraint(equalTo: root.trailingAnchor),
-            scrollView.bottomAnchor.constraint(equalTo: root.bottomAnchor),
-
-            emptyLabel.centerXAnchor.constraint(equalTo: root.centerXAnchor),
-            emptyLabel.centerYAnchor.constraint(equalTo: scrollView.centerYAnchor),
+            emptyLabel.centerXAnchor.constraint(equalTo: effectView.centerXAnchor),
+            emptyLabel.centerYAnchor.constraint(equalTo: effectView.centerYAnchor),
         ])
 
-        self.view = root
+        self.view = effectView
     }
 
     override func viewDidLoad() {
         super.viewDidLoad()
         reloadData()
 
-        // Observe store changes
         cancellable = noteStore?.objectWillChange
             .debounce(for: .milliseconds(100), scheduler: DispatchQueue.main)
             .sink { [weak self] _ in
                 self?.reloadData()
             }
+    }
+
+    override func viewDidAppear() {
+        super.viewDidAppear()
+        configureToolbar()
+    }
+
+    // MARK: - Toolbar (Liquid Glass on macOS 26)
+
+    private func configureToolbar() {
+        guard let window = view.window, window.toolbar == nil else { return }
+
+        let toolbar = NSToolbar(identifier: Self.toolbarID)
+        toolbar.delegate = self
+        toolbar.displayMode = .iconOnly
+        toolbar.allowsUserCustomization = false
+        toolbar.showsBaselineSeparator = false
+
+        window.toolbar = toolbar
+        window.titleVisibility = .hidden
+        window.toolbarStyle = .unified
+    }
+
+    // MARK: - NSToolbarDelegate
+
+    func toolbar(_ toolbar: NSToolbar, itemForItemIdentifier itemIdentifier: NSToolbarItem.Identifier, willBeInsertedIntoToolbar flag: Bool) -> NSToolbarItem? {
+        switch itemIdentifier {
+        case Self.searchItemID:
+            let item = NSSearchToolbarItem(itemIdentifier: itemIdentifier)
+            item.searchField = searchField
+            item.preferredWidthForSearchField = 220
+            return item
+
+        case Self.createItemID:
+            let item = NSToolbarItem(itemIdentifier: itemIdentifier)
+            item.label = "New Note"
+            item.toolTip = "New Note"
+            let config = NSImage.SymbolConfiguration(pointSize: 14, weight: .medium)
+            item.image = NSImage(systemSymbolName: "plus", accessibilityDescription: "New Note")?
+                .withSymbolConfiguration(config)
+            item.target = self
+            item.action = #selector(createClicked)
+            return item
+
+        default:
+            return nil
+        }
+    }
+
+    func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
+        [.flexibleSpace, Self.searchItemID, Self.createItemID]
+    }
+
+    func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
+        [Self.searchItemID, Self.createItemID, .flexibleSpace, .space]
     }
 
     // MARK: - Data
@@ -189,8 +227,7 @@ final class AllNotesViewController: NSViewController, NSTableViewDataSource, NST
     func tableViewSelectionDidChange(_ notification: Notification) {
         let row = tableView.selectedRow
         guard row >= 0, row < filteredNotes.count else { return }
-        let note = filteredNotes[row]
-        onOpenNote?(note.id)
+        onOpenNote?(filteredNotes[row].id)
     }
 
     // MARK: - NSSearchFieldDelegate
@@ -238,7 +275,8 @@ final class AllNotesViewController: NSViewController, NSTableViewDataSource, NST
 
 // MARK: - AllNotesCellView
 
-/// A table cell that shows theme swatch, title, excerpt, timestamp, pin & open state.
+/// A table cell with theme swatch, title, excerpt, timestamp, pin & open-state indicators.
+/// Uses vibrant label colors for Liquid Glass legibility.
 final class AllNotesCellView: NSTableCellView {
 
     private let swatchView = NSView(frame: .zero)

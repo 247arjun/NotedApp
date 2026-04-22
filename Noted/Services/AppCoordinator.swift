@@ -5,6 +5,7 @@ import Combine
 
 /// Central coordinator that owns the note store, window manager, and persistence.
 /// Accessed as a shared singleton from both SwiftUI and AppKit.
+@MainActor
 final class AppCoordinator: ObservableObject {
 
     static let shared = AppCoordinator()

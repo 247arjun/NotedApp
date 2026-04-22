@@ -3,6 +3,7 @@ import AppKit
 // MARK: - NoteEditorCoordinator
 
 /// Bridges NSTextView delegate events back to the NoteStore.
+@MainActor
 final class NoteEditorCoordinator: NSObject, NSTextViewDelegate {
 
     let noteID: UUID

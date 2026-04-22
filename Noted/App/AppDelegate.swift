@@ -2,6 +2,7 @@ import AppKit
 
 // MARK: - AppDelegate
 
+@MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private var settingsWindowController: NSWindowController?
