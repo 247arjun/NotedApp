@@ -67,6 +67,26 @@ final class AppCoordinator: ObservableObject {
         windowManager.openWindow(for: noteID)
     }
 
+    func deleteNote(noteID: UUID) {
+        windowManager.closeWindow(for: noteID)
+        noteStore.deleteNote(noteID: noteID)
+    }
+
+    @objc func deleteCurrentNote() {
+        guard let noteID = currentNoteID(),
+              let window = NSApp.keyWindow else { return }
+        let alert = NSAlert()
+        alert.messageText = "Delete Note?"
+        alert.informativeText = "This note will be permanently deleted. This action cannot be undone."
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Delete")
+        alert.addButton(withTitle: "Cancel")
+        alert.beginSheetModal(for: window) { [weak self] response in
+            guard response == .alertFirstButtonReturn else { return }
+            self?.deleteNote(noteID: noteID)
+        }
+    }
+
     // MARK: - All Notes Window
 
     @objc func showAllNotes() {
@@ -75,6 +95,9 @@ final class AppCoordinator: ObservableObject {
                 noteStore: noteStore,
                 onOpenNote: { [weak self] id in
                     self?.openNote(noteID: id)
+                },
+                onDeleteNote: { [weak self] id in
+                    self?.deleteNote(noteID: id)
                 },
                 onCreateNote: { [weak self] in
                     self?.createNewNote()

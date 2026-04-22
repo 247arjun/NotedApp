@@ -21,6 +21,14 @@ final class WindowManager {
             name: .noteWindowDidClose,
             object: nil
         )
+
+        // Observe window delete requests
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleWindowDeleteRequest(_:)),
+            name: .noteWindowDidRequestDelete,
+            object: nil
+        )
     }
 
     deinit {
@@ -130,6 +138,17 @@ final class WindowManager {
     @objc private func handleWindowClose(_ notification: Notification) {
         guard let noteID = notification.object as? UUID else { return }
         controllers.removeValue(forKey: noteID)
+    }
+
+    @objc private func handleWindowDeleteRequest(_ notification: Notification) {
+        guard let noteID = notification.object as? UUID else { return }
+        // Close the window without triggering the normal close-mark flow
+        if let controller = controllers.removeValue(forKey: noteID) {
+            // Remove delegate to prevent windowWillClose from marking as closed
+            controller.window?.delegate = nil
+            controller.window?.close()
+        }
+        noteStore?.deleteNote(noteID: noteID)
     }
 
     private func nextCascadedFrame() -> NSRect {

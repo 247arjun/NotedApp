@@ -1,11 +1,11 @@
 import AppKit
-import SwiftUI
 
 // MARK: - NoteContentViewDelegate
 
 protocol NoteContentViewDelegate: AnyObject {
     func noteContentView(_ view: NoteContentView, didCommitTitle title: String)
     func noteContentViewDidClickClose(_ view: NoteContentView)
+    func noteContentViewDidClickDelete(_ view: NoteContentView)
     func noteContentViewDidClickPin(_ view: NoteContentView)
     func noteContentView(_ view: NoteContentView, didSelectTheme themeID: String)
 }
@@ -18,7 +18,7 @@ protocol NoteContentViewDelegate: AnyObject {
 /// ```
 /// ┌──────────────────────────────────────┐
 /// │  HEADER (34 pt)                      │
-/// │  [Title         ]   [Pin][🎨][✕]    │
+/// │  [Title       ]  [Pin][🎨][✕][🗑]   │
 /// ├──────────────────────────────────────┤
 /// │                                      │
 /// │  NSScrollView ▸ NoteTextView         │
@@ -40,6 +40,7 @@ final class NoteContentView: NSView {
     let headerView = NSView()
     let titleField: NSTextField
     let closeButton: NSButton
+    let deleteButton: NSButton
     let pinButton: NSButton
     let themeButton: NSButton
     let editorScrollView: NSScrollView
@@ -72,9 +73,10 @@ final class NoteContentView: NSView {
         titleField.setAccessibilityLabel("Note title")
 
         // Buttons
-        closeButton = Self.makeHeaderButton(symbolName: "xmark", label: "Close note")
-        pinButton   = Self.makeHeaderButton(symbolName: "pin", label: "Pin note")
-        themeButton = Self.makeHeaderButton(symbolName: "paintpalette", label: "Change note color")
+        closeButton  = Self.makeHeaderButton(symbolName: "xmark", label: "Close note")
+        deleteButton = Self.makeHeaderButton(symbolName: "trash", label: "Delete note")
+        pinButton    = Self.makeHeaderButton(symbolName: "pin", label: "Pin note")
+        themeButton  = Self.makeHeaderButton(symbolName: "paintpalette", label: "Change note color")
 
         // Editor
         editorScrollView = NSScrollView()
@@ -121,9 +123,10 @@ final class NoteContentView: NSView {
         }
 
         // Controls
-        closeButton.contentTintColor = newTheme.controlTintColor
-        pinButton.contentTintColor   = newTheme.controlTintColor
-        themeButton.contentTintColor = newTheme.controlTintColor
+        closeButton.contentTintColor  = newTheme.controlTintColor
+        deleteButton.contentTintColor = newTheme.controlTintColor
+        pinButton.contentTintColor    = newTheme.controlTintColor
+        themeButton.contentTintColor  = newTheme.controlTintColor
 
         // Editor
         textView.applyTheme(newTheme)
@@ -174,6 +177,9 @@ final class NoteContentView: NSView {
         closeButton.translatesAutoresizingMaskIntoConstraints = false
         headerView.addSubview(closeButton)
 
+        deleteButton.translatesAutoresizingMaskIntoConstraints = false
+        headerView.addSubview(deleteButton)
+
         pinButton.translatesAutoresizingMaskIntoConstraints = false
         headerView.addSubview(pinButton)
 
@@ -215,8 +221,13 @@ final class NoteContentView: NSView {
             titleField.centerYAnchor.constraint(equalTo: headerView.centerYAnchor),
             titleField.trailingAnchor.constraint(lessThanOrEqualTo: pinButton.leadingAnchor, constant: -8),
 
-            // Control cluster (right-to-left)
-            closeButton.trailingAnchor.constraint(equalTo: headerView.trailingAnchor, constant: -12),
+            // Control cluster (right-to-left): [Pin][Theme][Close][Delete]
+            deleteButton.trailingAnchor.constraint(equalTo: headerView.trailingAnchor, constant: -12),
+            deleteButton.centerYAnchor.constraint(equalTo: headerView.centerYAnchor),
+            deleteButton.widthAnchor.constraint(equalToConstant: 20),
+            deleteButton.heightAnchor.constraint(equalToConstant: 20),
+
+            closeButton.trailingAnchor.constraint(equalTo: deleteButton.leadingAnchor, constant: -8),
             closeButton.centerYAnchor.constraint(equalTo: headerView.centerYAnchor),
             closeButton.widthAnchor.constraint(equalToConstant: 20),
             closeButton.heightAnchor.constraint(equalToConstant: 20),
@@ -249,6 +260,9 @@ final class NoteContentView: NSView {
         closeButton.target = self
         closeButton.action = #selector(closeClicked)
 
+        deleteButton.target = self
+        deleteButton.action = #selector(deleteClicked)
+
         pinButton.target = self
         pinButton.action = #selector(pinClicked)
 
@@ -264,6 +278,10 @@ final class NoteContentView: NSView {
         delegate?.noteContentViewDidClickClose(self)
     }
 
+    @objc private func deleteClicked(_ sender: Any?) {
+        delegate?.noteContentViewDidClickDelete(self)
+    }
+
     @objc private func pinClicked(_ sender: Any?) {
         delegate?.noteContentViewDidClickPin(self)
     }
@@ -273,12 +291,12 @@ final class NoteContentView: NSView {
         popover.behavior = .transient
         popover.contentSize = NSSize(width: 200, height: 50)
 
-        let pickerView = ThemePickerView(currentThemeID: theme.id) { [weak self] selectedID in
+        let pickerVC = ThemePickerViewController(currentThemeID: theme.id) { [weak self, weak popover] selectedID in
             guard let self else { return }
-            popover.performClose(nil)
+            popover?.performClose(nil)
             self.delegate?.noteContentView(self, didSelectTheme: selectedID)
         }
-        popover.contentViewController = NSHostingController(rootView: pickerView)
+        popover.contentViewController = pickerVC
         popover.show(relativeTo: sender.bounds, of: sender, preferredEdge: .minY)
         themePopover = popover
     }

@@ -118,6 +118,20 @@ extension NoteWindowController: NoteContentViewDelegate {
         window?.close()
     }
 
+    func noteContentViewDidClickDelete(_ view: NoteContentView) {
+        guard let window = window else { return }
+        let alert = NSAlert()
+        alert.messageText = "Delete Note?"
+        alert.informativeText = "This note will be permanently deleted. This action cannot be undone."
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Delete")
+        alert.addButton(withTitle: "Cancel")
+        alert.beginSheetModal(for: window) { [weak self] response in
+            guard let self, response == .alertFirstButtonReturn else { return }
+            NotificationCenter.default.post(name: .noteWindowDidRequestDelete, object: self.noteID)
+        }
+    }
+
     func noteContentViewDidClickPin(_ view: NoteContentView) {
         guard let note = noteStore?.notes[noteID] else { return }
         let newPinned = !note.isPinned
@@ -137,4 +151,5 @@ extension NoteWindowController: NoteContentViewDelegate {
 
 extension Notification.Name {
     static let noteWindowDidClose = Notification.Name("noteWindowDidClose")
+    static let noteWindowDidRequestDelete = Notification.Name("noteWindowDidRequestDelete")
 }

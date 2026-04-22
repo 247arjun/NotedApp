@@ -1,21 +1,18 @@
 import AppKit
-import SwiftUI
 
 // MARK: - AllNotesWindowController
 
-/// Manages the "All Notes" utility window (SwiftUI hosted in AppKit).
+/// Manages the "All Notes" utility window — pure AppKit.
 final class AllNotesWindowController: NSWindowController {
 
-    convenience init(noteStore: NoteStore, onOpenNote: @escaping (UUID) -> Void, onCreateNote: @escaping () -> Void, isWindowOpen: @escaping (UUID) -> Bool) {
-        let allNotesView = AllNotesView(
-            noteStore: noteStore,
-            onOpenNote: onOpenNote,
-            onCreateNote: onCreateNote,
-            isWindowOpen: isWindowOpen
-        )
-        let hostingController = NSHostingController(rootView: allNotesView)
+    convenience init(noteStore: NoteStore, onOpenNote: @escaping (UUID) -> Void, onDeleteNote: @escaping (UUID) -> Void, onCreateNote: @escaping () -> Void, isWindowOpen: @escaping (UUID) -> Bool) {
+        let viewController = AllNotesViewController(noteStore: noteStore)
+        viewController.onOpenNote = onOpenNote
+        viewController.onDeleteNote = onDeleteNote
+        viewController.onCreateNote = onCreateNote
+        viewController.isWindowOpen = isWindowOpen
 
-        let window = NSWindow(contentViewController: hostingController)
+        let window = NSWindow(contentViewController: viewController)
         window.title = "All Notes"
         window.styleMask = [.titled, .closable, .resizable, .miniaturizable]
         window.setContentSize(NSSize(width: 400, height: 500))

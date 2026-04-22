@@ -4,8 +4,10 @@ import AppKit
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
 
+    private var settingsWindowController: NSWindowController?
+
     func applicationDidFinishLaunching(_ notification: Notification) {
-        buildMainMenu()
+        NSApp.mainMenu = buildMainMenu()
         AppCoordinator.shared.start()
     }
 
@@ -26,7 +28,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Main Menu
 
-    private func buildMainMenu() {
+    private func buildMainMenu() -> NSMenu {
         let mainMenu = NSMenu()
 
         // App menu
@@ -51,6 +53,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         fileMenu.addItem(withTitle: "Duplicate Note", action: #selector(AppCoordinator.duplicateCurrentNote), keyEquivalent: "").target = AppCoordinator.shared
         fileMenu.addItem(.separator())
         fileMenu.addItem(withTitle: "Close Note", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
+        let deleteItem = fileMenu.addItem(withTitle: "Delete Note…", action: #selector(AppCoordinator.deleteCurrentNote), keyEquivalent: "\u{8}")
+        deleteItem.target = AppCoordinator.shared
+        deleteItem.keyEquivalentModifierMask = [.command]
         fileMenu.addItem(.separator())
         let allNotesItem = fileMenu.addItem(withTitle: "All Notes", action: #selector(AppCoordinator.showAllNotes), keyEquivalent: "A")
         allNotesItem.keyEquivalentModifierMask = [.command, .shift]
@@ -130,15 +135,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         mainMenu.addItem(helpMenuItem)
         NSApp.helpMenu = helpMenu
 
-        NSApp.mainMenu = mainMenu
+        return mainMenu
     }
 
     @objc private func showSettings() {
-        // Open the SwiftUI Settings scene
-        if #available(macOS 14.0, *) {
-            NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
-        } else {
-            NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
-        }
+        SettingsWindowController.shared.showWindow()
     }
 }

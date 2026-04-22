@@ -7,33 +7,35 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		042BAF4F3F54303543116F9F /* AllNotesViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0AE059B0BADC3F6FF3288BED /* AllNotesViewController.swift */; };
 		06536FA9C93910523E8C886B /* NoteTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81A70F7264812776559AE7FA /* NoteTheme.swift */; };
 		07B46D84C6832A9C55344152 /* PersistenceService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4063CF6C4B06DDB9A4E743A /* PersistenceService.swift */; };
+		1D8D44B9E8EDC5B8FE0E8F48 /* ThemePickerViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B48728B333509B020804BE3 /* ThemePickerViewController.swift */; };
 		1F45743C0D79329316019593 /* NoteWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = B85A82325751D981E303F471 /* NoteWindow.swift */; };
 		401B5CBF45944BC5EE17D3DC /* AllNotesWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1EC7DDCFAC1A89E0F123584F /* AllNotesWindowController.swift */; };
 		44C0884F727FA24A4F291D4A /* NoteWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 355E74953D20B3FF772BC163 /* NoteWindowController.swift */; };
 		5CE5D3FB5AD4E0A9A75DD9E5 /* NoteContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E408F893FC4A940067FE563 /* NoteContentView.swift */; };
 		61921F0B72BF4C6A0A6E4359 /* ResizeHandleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9212F00229576C5A982C643 /* ResizeHandleView.swift */; };
+		6B1274974C99836F54C109D5 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFEE677E3E20A9775C8F7A6D /* main.swift */; };
 		6D80EC3346F2E201DBF0DCC8 /* NoteStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 901450D7BDCE4F6E40125581 /* NoteStore.swift */; };
 		732A8BC7F4330A4AD1A04F4D /* NoteEditorCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07B9358CBFA655CEC0ED6297 /* NoteEditorCoordinator.swift */; };
+		81A3DC48F87C6AECB829BC16 /* SettingsWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE427FA822178EAE2C76AC84 /* SettingsWindowController.swift */; };
 		9B3E6F5C9E79538297DB8627 /* Logging.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6CF7F6217EDEE40177A073F /* Logging.swift */; };
 		9D5F96747EE0A247E50CC3D3 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B44B7236AE24EE00AC157221 /* AppDelegate.swift */; };
 		A769B26AC2DBE6260A48EDCA /* NoteTextView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43237D109B897E69523EC282 /* NoteTextView.swift */; };
-		BE491C3E63CB4A1BFD3D8A0C /* NotedApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33414DC854E2BDC434232F61 /* NotedApp.swift */; };
 		BEBC42A9CECF93FEE007E541 /* NoteRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91651BB7486B90F4134DE624 /* NoteRecord.swift */; };
-		D81AAE4B001F8E8EC657E28F /* AllNotesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5407B030AB1F7584ACC9E07 /* AllNotesView.swift */; };
 		E11974A17FC02C6759BB6801 /* AppCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A334F6D930AE8D06E1323805 /* AppCoordinator.swift */; };
-		F4AC935B12DEF6BCACEF3942 /* ThemePickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C158876855591EA21DD1B461 /* ThemePickerView.swift */; };
 		FA178BBC59C36FCE72BC4DD9 /* WindowManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B88740FB0FF2B4856B486CF3 /* WindowManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		07B9358CBFA655CEC0ED6297 /* NoteEditorCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteEditorCoordinator.swift; sourceTree = "<group>"; };
+		0AE059B0BADC3F6FF3288BED /* AllNotesViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AllNotesViewController.swift; sourceTree = "<group>"; };
 		0E408F893FC4A940067FE563 /* NoteContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteContentView.swift; sourceTree = "<group>"; };
 		1EC7DDCFAC1A89E0F123584F /* AllNotesWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AllNotesWindowController.swift; sourceTree = "<group>"; };
 		2F6EE2C4CE0C9D0460958407 /* Noted.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Noted.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		33414DC854E2BDC434232F61 /* NotedApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotedApp.swift; sourceTree = "<group>"; };
 		355E74953D20B3FF772BC163 /* NoteWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteWindowController.swift; sourceTree = "<group>"; };
+		3B48728B333509B020804BE3 /* ThemePickerViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemePickerViewController.swift; sourceTree = "<group>"; };
 		43237D109B897E69523EC282 /* NoteTextView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteTextView.swift; sourceTree = "<group>"; };
 		81A70F7264812776559AE7FA /* NoteTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteTheme.swift; sourceTree = "<group>"; };
 		901450D7BDCE4F6E40125581 /* NoteStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteStore.swift; sourceTree = "<group>"; };
@@ -43,10 +45,10 @@
 		B44B7236AE24EE00AC157221 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		B85A82325751D981E303F471 /* NoteWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteWindow.swift; sourceTree = "<group>"; };
 		B88740FB0FF2B4856B486CF3 /* WindowManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowManager.swift; sourceTree = "<group>"; };
-		C158876855591EA21DD1B461 /* ThemePickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemePickerView.swift; sourceTree = "<group>"; };
+		CFEE677E3E20A9775C8F7A6D /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
 		D9212F00229576C5A982C643 /* ResizeHandleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResizeHandleView.swift; sourceTree = "<group>"; };
+		DE427FA822178EAE2C76AC84 /* SettingsWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsWindowController.swift; sourceTree = "<group>"; };
 		E6CF7F6217EDEE40177A073F /* Logging.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Logging.swift; sourceTree = "<group>"; };
-		F5407B030AB1F7584ACC9E07 /* AllNotesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AllNotesView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -54,7 +56,7 @@
 			isa = PBXGroup;
 			children = (
 				B44B7236AE24EE00AC157221 /* AppDelegate.swift */,
-				33414DC854E2BDC434232F61 /* NotedApp.swift */,
+				CFEE677E3E20A9775C8F7A6D /* main.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -129,7 +131,7 @@
 		9645C462E6A806F809BE4F96 /* AllNotes */ = {
 			isa = PBXGroup;
 			children = (
-				F5407B030AB1F7584ACC9E07 /* AllNotesView.swift */,
+				0AE059B0BADC3F6FF3288BED /* AllNotesViewController.swift */,
 				1EC7DDCFAC1A89E0F123584F /* AllNotesWindowController.swift */,
 			);
 			path = AllNotes;
@@ -150,7 +152,8 @@
 				07B9358CBFA655CEC0ED6297 /* NoteEditorCoordinator.swift */,
 				43237D109B897E69523EC282 /* NoteTextView.swift */,
 				D9212F00229576C5A982C643 /* ResizeHandleView.swift */,
-				C158876855591EA21DD1B461 /* ThemePickerView.swift */,
+				DE427FA822178EAE2C76AC84 /* SettingsWindowController.swift */,
+				3B48728B333509B020804BE3 /* ThemePickerViewController.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -210,7 +213,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				D81AAE4B001F8E8EC657E28F /* AllNotesView.swift in Sources */,
+				042BAF4F3F54303543116F9F /* AllNotesViewController.swift in Sources */,
 				401B5CBF45944BC5EE17D3DC /* AllNotesWindowController.swift in Sources */,
 				E11974A17FC02C6759BB6801 /* AppCoordinator.swift in Sources */,
 				9D5F96747EE0A247E50CC3D3 /* AppDelegate.swift in Sources */,
@@ -223,11 +226,12 @@
 				06536FA9C93910523E8C886B /* NoteTheme.swift in Sources */,
 				1F45743C0D79329316019593 /* NoteWindow.swift in Sources */,
 				44C0884F727FA24A4F291D4A /* NoteWindowController.swift in Sources */,
-				BE491C3E63CB4A1BFD3D8A0C /* NotedApp.swift in Sources */,
 				07B46D84C6832A9C55344152 /* PersistenceService.swift in Sources */,
 				61921F0B72BF4C6A0A6E4359 /* ResizeHandleView.swift in Sources */,
-				F4AC935B12DEF6BCACEF3942 /* ThemePickerView.swift in Sources */,
+				81A3DC48F87C6AECB829BC16 /* SettingsWindowController.swift in Sources */,
+				1D8D44B9E8EDC5B8FE0E8F48 /* ThemePickerViewController.swift in Sources */,
 				FA178BBC59C36FCE72BC4DD9 /* WindowManager.swift in Sources */,
+				6B1274974C99836F54C109D5 /* main.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
