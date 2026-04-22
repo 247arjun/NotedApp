@@ -101,7 +101,7 @@ final class AllNotesWindowController: NSWindowController {
             .fullSizeContentView,
         ]
         window.titleVisibility = .hidden
-        window.toolbarStyle = .unifiedCompact
+        window.toolbarStyle = .unified
 
         // An NSToolbar is required for the sidebar to get its Liquid Glass
         // treatment and the system sidebar-toggle button.
