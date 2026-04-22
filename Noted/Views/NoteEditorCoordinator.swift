@@ -9,6 +9,10 @@ final class NoteEditorCoordinator: NSObject, NSTextViewDelegate {
     let noteID: UUID
     weak var noteStore: NoteStore?
 
+    /// True while this coordinator is actively pushing changes to the store.
+    /// Used to avoid re-reading our own edits from the store.
+    private(set) var isLocalEdit = false
+
     init(noteID: UUID, noteStore: NoteStore) {
         self.noteID = noteID
         self.noteStore = noteStore
@@ -27,7 +31,9 @@ final class NoteEditorCoordinator: NSObject, NSTextViewDelegate {
                 from: range,
                 documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf]
             )
+            isLocalEdit = true
             noteStore?.updateBody(noteID: noteID, attributedData: data)
+            isLocalEdit = false
         } catch {
             Log.editor.error("Failed to serialize body for note \(self.noteID): \(error.localizedDescription)")
         }

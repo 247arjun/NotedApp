@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 
 // MARK: - NoteDetailViewController
 
@@ -22,6 +23,7 @@ final class NoteDetailViewController: NSViewController, NoteContentViewDelegate 
 
     private var noteContentView: NoteContentView?
     private let placeholderLabel = NSTextField(labelWithString: "Select a note")
+    private var storeCancellable: AnyCancellable?
 
     // MARK: - Toolbar Item IDs
 
@@ -59,6 +61,18 @@ final class NoteDetailViewController: NSViewController, NoteContentViewDelegate 
         ])
 
         self.view = root
+    }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+
+        // Observe store changes to refresh detail when edited externally
+        // (e.g. from a standalone note window).
+        storeCancellable = noteStore?.objectWillChange
+            .debounce(for: .milliseconds(150), scheduler: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.refreshFromStoreIfNeeded()
+            }
     }
 
     // MARK: - Public
@@ -123,6 +137,49 @@ final class NoteDetailViewController: NSViewController, NoteContentViewDelegate 
         placeholderLabel.isHidden = false
         onWindowColorChanged?(nil)
         refreshToolbarItems()
+    }
+
+    /// Refresh the detail pane from the store if an external change occurred
+    /// (e.g. the user edited the same note in a standalone window).
+    private func refreshFromStoreIfNeeded() {
+        guard let id = currentNoteID,
+              let store = noteStore,
+              let note = store.notes[id],
+              let contentView = noteContentView else { return }
+
+        // Skip if our own editor coordinator made this change
+        if editorCoordinator?.isLocalEdit == true { return }
+
+        // Refresh title
+        if contentView.titleField.stringValue != note.title {
+            contentView.titleField.stringValue = note.title
+        }
+
+        // Refresh body — only if the text actually differs to avoid cursor jumps
+        let currentData: Data
+        do {
+            let storage = contentView.textView.textStorage!
+            currentData = try storage.data(
+                from: NSRange(location: 0, length: storage.length),
+                documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf]
+            )
+        } catch {
+            currentData = Data()
+        }
+
+        if currentData != note.attributedBodyData {
+            contentView.loadBody(from: note.attributedBodyData)
+        }
+
+        // Refresh pin state
+        contentView.updatePinState(note.isPinned)
+
+        // Refresh theme if changed
+        if contentView.theme.id != note.themeID {
+            let theme = ThemeRegistry.theme(for: note.themeID)
+            contentView.applyTheme(theme)
+            updateWindowColor(for: theme)
+        }
     }
 
     // MARK: - Toolbar
