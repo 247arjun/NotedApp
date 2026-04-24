@@ -95,7 +95,7 @@ final class NoteContentView: NSView {
         textView = NoteTextView()
 
         // Resize handle
-        resizeHandle = ResizeHandleView(frame: NSRect(x: 0, y: 0, width: 20, height: 20))
+        resizeHandle = ResizeHandleView(frame: NSRect(x: 0, y: 0, width: 28, height: 28))
 
         super.init(frame: .zero)
 
@@ -263,8 +263,8 @@ final class NoteContentView: NSView {
             // Resize handle
             resizeHandle.trailingAnchor.constraint(equalTo: trailingAnchor),
             resizeHandle.bottomAnchor.constraint(equalTo: bottomAnchor),
-            resizeHandle.widthAnchor.constraint(equalToConstant: 20),
-            resizeHandle.heightAnchor.constraint(equalToConstant: 20),
+            resizeHandle.widthAnchor.constraint(equalToConstant: 28),
+            resizeHandle.heightAnchor.constraint(equalToConstant: 28),
         ])
     }
 
