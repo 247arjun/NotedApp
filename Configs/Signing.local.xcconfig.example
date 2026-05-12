@@ -1,0 +1,23 @@
+// =============================================================================
+//  Signing.local.xcconfig.example
+//
+//  Template for the gitignored `Signing.local.xcconfig` file. After cloning,
+//  run:
+//
+//      cp Configs/Signing.local.xcconfig.example Configs/Signing.local.xcconfig
+//
+//  then edit the copy with your real values. The copy is .gitignored and
+//  survives `xcodegen generate` indefinitely — Xcode signing settings will
+//  never get clobbered again.
+//
+//  To find your DEVELOPMENT_TEAM ID:
+//      1. Xcode → Settings → Accounts → select Apple ID → "Manage Certificates…"
+//      2. or: https://developer.apple.com/account → Membership → Team ID
+// =============================================================================
+
+CODE_SIGN_STYLE = Automatic
+CODE_SIGN_IDENTITY = Apple Development
+DEVELOPMENT_TEAM = REPLACE_WITH_YOUR_10_CHAR_TEAM_ID
+
+// If you ever switch to manual signing, also set:
+// PROVISIONING_PROFILE_SPECIFIER = <profile name>

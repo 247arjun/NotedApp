@@ -23,6 +23,10 @@ targets:
           - Resources/Noted.entitlements
     resources:
       - path: Noted/Resources/Assets.xcassets
+    configFiles:
+      Debug: Configs/Signing.xcconfig
+      Release: Configs/Signing.xcconfig
+    scheme: {}
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.noted.app
@@ -30,6 +34,9 @@ targets:
         INFOPLIST_FILE: Noted/Resources/Info.plist
         CODE_SIGN_ENTITLEMENTS: Noted/Resources/Noted.entitlements
         GENERATE_INFOPLIST_FILE: NO
-        CODE_SIGN_IDENTITY: "-"
+        # Signing settings (CODE_SIGN_IDENTITY, CODE_SIGN_STYLE, DEVELOPMENT_TEAM)
+        # are intentionally NOT defined here — they live in Configs/Signing.xcconfig
+        # so that personal overrides in Configs/Signing.local.xcconfig (gitignored)
+        # are not clobbered by `xcodegen generate`.
         COMBINE_HIDPI_IMAGES: YES
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon

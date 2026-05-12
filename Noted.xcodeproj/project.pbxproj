@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		AA1234560000000000000001 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AA1234560000000000000002 /* Assets.xcassets */; };
 		042BAF4F3F54303543116F9F /* AllNotesViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0AE059B0BADC3F6FF3288BED /* AllNotesViewController.swift */; };
 		06536FA9C93910523E8C886B /* NoteTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81A70F7264812776559AE7FA /* NoteTheme.swift */; };
 		07B46D84C6832A9C55344152 /* PersistenceService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4063CF6C4B06DDB9A4E743A /* PersistenceService.swift */; };
@@ -15,6 +14,7 @@
 		1F45743C0D79329316019593 /* NoteWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = B85A82325751D981E303F471 /* NoteWindow.swift */; };
 		401B5CBF45944BC5EE17D3DC /* AllNotesWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1EC7DDCFAC1A89E0F123584F /* AllNotesWindowController.swift */; };
 		44C0884F727FA24A4F291D4A /* NoteWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 355E74953D20B3FF772BC163 /* NoteWindowController.swift */; };
+		4C47FD72A70950AA73E32874 /* icon_512x512@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = E7AD36EAF853C2D88DDCAB5C /* icon_512x512@2x.png */; };
 		5CE5D3FB5AD4E0A9A75DD9E5 /* NoteContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E408F893FC4A940067FE563 /* NoteContentView.swift */; };
 		61921F0B72BF4C6A0A6E4359 /* ResizeHandleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9212F00229576C5A982C643 /* ResizeHandleView.swift */; };
 		6732B196B608CC6DBF3E3BC6 /* NoteDetailViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB1CBC86BBFFCAAA51075FD0 /* NoteDetailViewController.swift */; };
@@ -32,7 +32,6 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		AA1234560000000000000002 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		07B9358CBFA655CEC0ED6297 /* NoteEditorCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteEditorCoordinator.swift; sourceTree = "<group>"; };
 		0AE059B0BADC3F6FF3288BED /* AllNotesViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AllNotesViewController.swift; sourceTree = "<group>"; };
 		0E408F893FC4A940067FE563 /* NoteContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteContentView.swift; sourceTree = "<group>"; };
@@ -40,6 +39,7 @@
 		2F6EE2C4CE0C9D0460958407 /* Noted.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Noted.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		355E74953D20B3FF772BC163 /* NoteWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteWindowController.swift; sourceTree = "<group>"; };
 		3B48728B333509B020804BE3 /* ThemePickerViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemePickerViewController.swift; sourceTree = "<group>"; };
+		41839683764761BBF2286541 /* Signing.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Signing.xcconfig; sourceTree = "<group>"; };
 		43237D109B897E69523EC282 /* NoteTextView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteTextView.swift; sourceTree = "<group>"; };
 		7D537D7B54DCA8C02E231DB9 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
 		81A70F7264812776559AE7FA /* NoteTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteTheme.swift; sourceTree = "<group>"; };
@@ -55,6 +55,7 @@
 		D9212F00229576C5A982C643 /* ResizeHandleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResizeHandleView.swift; sourceTree = "<group>"; };
 		DE427FA822178EAE2C76AC84 /* SettingsWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsWindowController.swift; sourceTree = "<group>"; };
 		E6CF7F6217EDEE40177A073F /* Logging.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Logging.swift; sourceTree = "<group>"; };
+		E7AD36EAF853C2D88DDCAB5C /* icon_512x512@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "icon_512x512@2x.png"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -91,6 +92,7 @@
 			children = (
 				9645C462E6A806F809BE4F96 /* AllNotes */,
 				0ADDBCFC5077D7656827F11B /* App */,
+				F7264C2B547A7093AB828076 /* Assets */,
 				4A804BAFB401381E3B6EF243 /* Models */,
 				613F7FAE038235D674162383 /* Resources */,
 				65EAE605F70FBF73B1F9BEAA /* Services */,
@@ -112,7 +114,6 @@
 		613F7FAE038235D674162383 /* Resources */ = {
 			isa = PBXGroup;
 			children = (
-				AA1234560000000000000002 /* Assets.xcassets */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -131,6 +132,7 @@
 		8E000681539F1195DC509FAD = {
 			isa = PBXGroup;
 			children = (
+				AACD79FB4043D59BF3F1CB1F /* Configs */,
 				4C88ACAF9CF020BBEB4CD8C0 /* Noted */,
 				996C447EDDC30284535FE01B /* Products */,
 			);
@@ -154,6 +156,14 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		AACD79FB4043D59BF3F1CB1F /* Configs */ = {
+			isa = PBXGroup;
+			children = (
+				41839683764761BBF2286541 /* Signing.xcconfig */,
+			);
+			path = Configs;
+			sourceTree = "<group>";
+		};
 		E981B4B5E08979289FA8A6F8 /* Views */ = {
 			isa = PBXGroup;
 			children = (
@@ -167,6 +177,14 @@
 			path = Views;
 			sourceTree = "<group>";
 		};
+		F7264C2B547A7093AB828076 /* Assets */ = {
+			isa = PBXGroup;
+			children = (
+				E7AD36EAF853C2D88DDCAB5C /* icon_512x512@2x.png */,
+			);
+			path = Assets;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -175,7 +193,7 @@
 			buildConfigurationList = 137AA717F82446F0B0CA1374 /* Build configuration list for PBXNativeTarget "Noted" */;
 			buildPhases = (
 				6F7803F128E5E1E6FE641790 /* Sources */,
-				AA1234560000000000000003 /* Resources */,
+				E38AE96B48FE033EEB483795 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -196,6 +214,12 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 2600;
+				TargetAttributes = {
+					C2A1979F71AA6A4FCA9CA4EE = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Manual;
+					};
+				};
 			};
 			buildConfigurationList = 9BB3ACF9E9B1BD9BC1BE14FE /* Build configuration list for PBXProject "Noted" */;
 			developmentRegion = en;
@@ -217,11 +241,11 @@
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		AA1234560000000000000003 /* Resources */ = {
+		E38AE96B48FE033EEB483795 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				AA1234560000000000000001 /* Assets.xcassets in Resources */,
+				4C47FD72A70950AA73E32874 /* icon_512x512@2x.png in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -261,15 +285,13 @@
 /* Begin XCBuildConfiguration section */
 		250CEF3FD57AC1A906CE2C12 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 41839683764761BBF2286541 /* Signing.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_ENTITLEMENTS = Noted/Resources/Noted.entitlements;
-				CODE_SIGN_IDENTITY = "-";
 				COMBINE_HIDPI_IMAGES = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Noted/Resources/Info.plist;
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -345,15 +367,13 @@
 		};
 		48C36B8DA9882EE4C44A7117 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 41839683764761BBF2286541 /* Signing.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_ENTITLEMENTS = Noted/Resources/Noted.entitlements;
-				CODE_SIGN_IDENTITY = "-";
 				COMBINE_HIDPI_IMAGES = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Noted/Resources/Info.plist;
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
