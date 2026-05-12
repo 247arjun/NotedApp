@@ -15,12 +15,13 @@ struct RichTextEditor: UIViewRepresentable {
 
     @Binding var attributedData: Data
     let theme: NoteTheme
+    var isReadOnly: Bool = false
 
     func makeUIView(context: Context) -> UITextView {
         let tv = UITextView()
-        tv.isEditable = true
+        tv.isEditable = !isReadOnly
         tv.isSelectable = true
-        tv.allowsEditingTextAttributes = true
+        tv.allowsEditingTextAttributes = !isReadOnly
         tv.alwaysBounceVertical = true
         tv.keyboardDismissMode = .interactive
         tv.textContainerInset = UIEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
@@ -29,7 +30,8 @@ struct RichTextEditor: UIViewRepresentable {
         // System Find UI on iOS 16+ — surfaced via our toolbar's Find button
         // and the hardware ⌘F shortcut.
         tv.isFindInteractionEnabled = true
-        tv.inputAccessoryView = context.coordinator.makeAccessoryBar()
+        // Read-only notes don't get the editing accessory bar.
+        tv.inputAccessoryView = isReadOnly ? nil : context.coordinator.makeAccessoryBar()
         applyTheme(to: tv)
         loadAttributedString(into: tv)
         context.coordinator.textView = tv
@@ -38,6 +40,15 @@ struct RichTextEditor: UIViewRepresentable {
 
     func updateUIView(_ tv: UITextView, context: Context) {
         applyTheme(to: tv)
+        tv.isEditable = !isReadOnly
+        tv.allowsEditingTextAttributes = !isReadOnly
+        // Refresh the accessory bar if the editability flipped at runtime.
+        let wantsBar = !isReadOnly
+        let hasBar = tv.inputAccessoryView != nil
+        if wantsBar != hasBar {
+            tv.inputAccessoryView = wantsBar ? context.coordinator.makeAccessoryBar() : nil
+        }
+
         let currentData = currentAttributedData(from: tv)
         if currentData != attributedData {
             let selected = tv.selectedRange

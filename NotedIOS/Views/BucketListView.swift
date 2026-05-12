@@ -3,14 +3,17 @@ import NotedKit
 
 // MARK: - BucketListView
 
-/// Read-only-ish browser for the Archived and Trash buckets.
-///
-/// These notes are NOT loaded on app launch — opening this view triggers
-/// the on-demand load (`loadArchived()` / `loadTrashed()`) so the active
-/// list stays snappy.
+/// Sidebar-style list for the Archived and Trash buckets. Loads its bucket
+/// on demand (`.onAppear`) so app launch never touches these folders. Lets
+/// the detail pane preview the selected note read-only.
 struct BucketListView: View {
     let bucket: StorageBucket
     @EnvironmentObject private var noteStore: NoteStore
+
+    @Binding var selection: UUID?
+    @Binding var activeBucket: StorageBucket
+    @Binding var showSettings: Bool
+
     @State private var showEmptyTrashConfirm = false
     @State private var deleteForeverID: UUID?
 
@@ -24,7 +27,7 @@ struct BucketListView: View {
     }
 
     var body: some View {
-        List {
+        List(selection: $selection) {
             if notes.isEmpty {
                 ContentUnavailableView(
                     bucket == .archived ? "No archived notes" : "Trash is empty",
@@ -34,25 +37,13 @@ struct BucketListView: View {
                                       : "Deleted notes are kept for 30 days before being permanently removed.")
                 )
             } else {
-                ForEach(notes) { note in
-                    row(for: note)
-                }
+                ForEach(notes) { note in row(for: note) }
             }
         }
         .listStyle(.insetGrouped)
         .navigationTitle(bucket == .archived ? "Archived" : "Trash")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            if bucket == .trash && !notes.isEmpty {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button(role: .destructive) {
-                        showEmptyTrashConfirm = true
-                    } label: {
-                        Text("Empty")
-                    }
-                }
-            }
-        }
+        .navigationBarTitleDisplayMode(.large)
+        .toolbar { toolbarContent }
         .onAppear {
             switch bucket {
             case .archived: noteStore.loadArchived()
@@ -60,8 +51,11 @@ struct BucketListView: View {
             case .active:   break
             }
         }
-        .confirmationDialog("Empty Trash?", isPresented: $showEmptyTrashConfirm, titleVisibility: .visible) {
+        .confirmationDialog("Empty Trash?",
+                            isPresented: $showEmptyTrashConfirm,
+                            titleVisibility: .visible) {
             Button("Empty Trash", role: .destructive) {
+                if let sel = selection, noteStore.trashedNotes[sel] != nil { selection = nil }
                 noteStore.emptyTrash()
             }
             Button("Cancel", role: .cancel) {}
@@ -77,7 +71,10 @@ struct BucketListView: View {
             titleVisibility: .visible
         ) {
             Button("Delete Forever", role: .destructive) {
-                if let id = deleteForeverID { noteStore.deleteForever(noteID: id) }
+                if let id = deleteForeverID {
+                    if selection == id { selection = nil }
+                    noteStore.deleteForever(noteID: id)
+                }
                 deleteForeverID = nil
             }
             Button("Cancel", role: .cancel) { deleteForeverID = nil }
@@ -86,9 +83,26 @@ struct BucketListView: View {
         }
     }
 
+    @ToolbarContentBuilder
+    private var toolbarContent: some ToolbarContent {
+        ToolbarItem(placement: .topBarLeading) {
+            BucketSwitcherMenu(activeBucket: $activeBucket, showSettings: $showSettings)
+        }
+        if bucket == .trash, !notes.isEmpty {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button(role: .destructive) {
+                    showEmptyTrashConfirm = true
+                } label: {
+                    Text("Empty")
+                }
+            }
+        }
+    }
+
     @ViewBuilder
     private func row(for note: NoteRecord) -> some View {
         BucketNoteRow(note: note, bucket: bucket)
+            .tag(note.id)
             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                 if bucket == .trash {
                     Button(role: .destructive) {
@@ -100,7 +114,7 @@ struct BucketListView: View {
                 Button {
                     restore(note)
                 } label: {
-                    Label(bucket == .archived ? "Restore" : "Restore", systemImage: "arrow.uturn.backward")
+                    Label("Restore", systemImage: "arrow.uturn.backward")
                 }
                 .tint(.green)
             }
@@ -108,10 +122,12 @@ struct BucketListView: View {
                 Button {
                     restore(note)
                 } label: {
-                    Label(bucket == .archived ? "Restore to Notes" : "Restore", systemImage: "arrow.uturn.backward")
+                    Label(bucket == .archived ? "Restore to Notes" : "Restore",
+                          systemImage: "arrow.uturn.backward")
                 }
                 if bucket == .archived {
                     Button(role: .destructive) {
+                        if selection == note.id { selection = nil }
                         noteStore.trash(noteID: note.id)
                     } label: {
                         Label("Move to Trash", systemImage: "trash")
@@ -128,9 +144,16 @@ struct BucketListView: View {
 
     private func restore(_ note: NoteRecord) {
         switch bucket {
-        case .archived: noteStore.unarchive(noteID: note.id)
-        case .trash:    noteStore.restoreFromTrash(noteID: note.id)
-        case .active:   break
+        case .archived:
+            noteStore.unarchive(noteID: note.id)
+        case .trash:
+            noteStore.restoreFromTrash(noteID: note.id)
+        case .active:
+            break
+        }
+        // Selected note moved to Active — jump there so user can keep working.
+        if selection == note.id {
+            activeBucket = .active
         }
     }
 }

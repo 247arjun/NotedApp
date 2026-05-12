@@ -1,12 +1,14 @@
 import SwiftUI
 import NotedKit
 
-// MARK: - NoteListView
+// MARK: - NoteListView (Active bucket)
 
 struct NoteListView: View {
     @EnvironmentObject private var noteStore: NoteStore
     @EnvironmentObject private var appModel: AppModel
+
     @Binding var selection: UUID?
+    @Binding var activeBucket: StorageBucket
     @Binding var showSettings: Bool
 
     @State private var searchText: String = ""
@@ -22,11 +24,11 @@ struct NoteListView: View {
         var id: String { rawValue }
     }
 
-    private var pinned: [NoteRecord]  { sortedAndFiltered.filter { $0.isPinned } }
-    private var others: [NoteRecord]  { sortedAndFiltered.filter { !$0.isPinned } }
+    private var pinned: [NoteRecord] { sortedAndFiltered.filter { $0.isPinned } }
+    private var others: [NoteRecord] { sortedAndFiltered.filter { !$0.isPinned } }
 
     private var sortedAndFiltered: [NoteRecord] {
-        var all = Array(noteStore.notes.values.filter { !$0.isArchived })
+        var all = Array(noteStore.notes.values)
         if !searchText.isEmpty {
             all = all.filter {
                 $0.title.localizedCaseInsensitiveContains(searchText)
@@ -51,7 +53,9 @@ struct NoteListView: View {
                     ContentUnavailableView(
                         searchText.isEmpty ? "No notes yet" : "No matching notes",
                         systemImage: "note.text",
-                        description: Text(searchText.isEmpty ? "Tap + to create your first note." : "Try a different search.")
+                        description: Text(searchText.isEmpty
+                                          ? "Tap + to create your first note."
+                                          : "Try a different search.")
                     )
                 } else {
                     ForEach(others) { row(for: $0) }
@@ -60,7 +64,9 @@ struct NoteListView: View {
         }
         .listStyle(.insetGrouped)
         .navigationTitle("Noted")
-        .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search notes")
+        .searchable(text: $searchText,
+                    placement: .navigationBarDrawer(displayMode: .always),
+                    prompt: "Search notes")
         .refreshable { appModel.refresh() }
         .toolbar { toolbarContent }
     }
@@ -68,27 +74,7 @@ struct NoteListView: View {
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
         ToolbarItem(placement: .topBarLeading) {
-            Menu {
-                NavigationLink {
-                    BucketListView(bucket: .archived)
-                } label: {
-                    Label("Archived", systemImage: "archivebox")
-                }
-                NavigationLink {
-                    BucketListView(bucket: .trash)
-                } label: {
-                    Label("Trash", systemImage: "trash")
-                }
-                Divider()
-                Button {
-                    showSettings = true
-                } label: {
-                    Label("Settings", systemImage: "gearshape")
-                }
-            } label: {
-                Image(systemName: "line.3.horizontal")
-            }
-            .accessibilityLabel("Menu")
+            BucketSwitcherMenu(activeBucket: $activeBucket, showSettings: $showSettings)
         }
         ToolbarItem(placement: .topBarTrailing) {
             Menu {
@@ -118,7 +104,7 @@ struct NoteListView: View {
             .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                 Button(role: .destructive) {
                     if selection == note.id { selection = nil }
-                    noteStore.deleteNote(noteID: note.id)  // → Trash (30-day grace)
+                    noteStore.deleteNote(noteID: note.id)   // → Trash (30-day grace)
                 } label: {
                     Label("Delete", systemImage: "trash")
                 }
@@ -134,7 +120,8 @@ struct NoteListView: View {
                 Button {
                     noteStore.updatePinned(noteID: note.id, isPinned: !note.isPinned)
                 } label: {
-                    Label(note.isPinned ? "Unpin" : "Pin", systemImage: note.isPinned ? "pin.slash" : "pin")
+                    Label(note.isPinned ? "Unpin" : "Pin",
+                          systemImage: note.isPinned ? "pin.slash" : "pin")
                 }
                 .tint(.orange)
             }
@@ -142,7 +129,8 @@ struct NoteListView: View {
                 Button {
                     noteStore.updatePinned(noteID: note.id, isPinned: !note.isPinned)
                 } label: {
-                    Label(note.isPinned ? "Unpin" : "Pin", systemImage: note.isPinned ? "pin.slash" : "pin")
+                    Label(note.isPinned ? "Unpin" : "Pin",
+                          systemImage: note.isPinned ? "pin.slash" : "pin")
                 }
                 Button {
                     if let dup = noteStore.duplicateNote(noteID: note.id) {
