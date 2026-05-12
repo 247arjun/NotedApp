@@ -23,5 +23,13 @@ CODE_SIGN_IDENTITY = -
 DEVELOPMENT_TEAM =
 PROVISIONING_PROFILE_SPECIFIER =
 
+// --- Hardened Runtime: required for Apple notarization. -------------------
+// The Hardened Runtime opts the app into runtime protections (no JIT by
+// default, library validation, restricted DYLD env, etc.). Apple refuses
+// to notarize any macOS app shipped without it. Safe to leave on for
+// Debug builds too — none of Noted's features (iCloud, sandbox, security-
+// scoped bookmarks, NSTextView editing) need a Hardened Runtime exception.
+ENABLE_HARDENED_RUNTIME = YES
+
 // --- Optional local override (gitignored). No-op if file is absent. ---
 #include? "Signing.local.xcconfig"
