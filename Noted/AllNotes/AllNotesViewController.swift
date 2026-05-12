@@ -1,4 +1,5 @@
 import AppKit
+import NotedKit
 import Combine
 
 // MARK: - NoteSortMode

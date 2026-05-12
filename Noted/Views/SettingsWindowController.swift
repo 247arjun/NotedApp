@@ -1,4 +1,5 @@
 import AppKit
+import NotedKit
 
 // MARK: - SettingsWindowController
 
@@ -10,7 +11,11 @@ final class SettingsWindowController: NSWindowController {
 
     // MARK: - Controls
 
+    private let syncCheckbox = NSButton(checkboxWithTitle: "Sync with iCloud", target: nil, action: nil)
+    private let syncSubtitle = NSTextField(labelWithString: "")
     private let saveLocationLabel = NSTextField(labelWithString: "")
+    private let chooseLocationButton = NSButton(title: "Choose…", target: nil, action: nil)
+    private let resetLocationButton  = NSButton(title: "Reset",   target: nil, action: nil)
     private let themePopUp = NSPopUpButton(frame: .zero, pullsDown: false)
     private let launchPopUp = NSPopUpButton(frame: .zero, pullsDown: false)
     private let fontNameLabel = NSTextField(labelWithString: "")
@@ -19,7 +24,7 @@ final class SettingsWindowController: NSWindowController {
 
     private init() {
         let window = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 540, height: 420),
+            contentRect: NSRect(x: 0, y: 0, width: 540, height: 460),
             styleMask: [.titled, .closable],
             backing: .buffered,
             defer: false
@@ -48,52 +53,38 @@ final class SettingsWindowController: NSWindowController {
     private func buildUI() {
         guard let contentView = window?.contentView else { return }
 
-        // Build all rows: [label, value] pairs with section headers as merged rows.
         var rows: [[NSView]] = []
 
-        // ── Storage ──
         rows.append([makeSectionHeader("Storage")])
+        rows.append([makeLabel(""), makeSyncRow()])
         rows.append([makeLabel("Save location:"), makeLocationRow()])
 
-        // ── Appearance ──
         rows.append([makeSectionHeader("Appearance")])
         rows.append([makeLabel("Default theme:"), themePopUpSetup()])
 
-        // ── Editor ──
         rows.append([makeSectionHeader("Editor")])
         rows.append([makeLabel("Default font:"), makeFontRow()])
         rows.append([makeLabel("Default size:"), makeSizeRow()])
 
-        // ── General ──
         rows.append([makeSectionHeader("General")])
         rows.append([makeLabel("On launch:"), launchPopUpSetup()])
 
         let grid = NSGridView(views: rows)
         grid.translatesAutoresizingMaskIntoConstraints = false
-
-        // Column config
-        grid.column(at: 0).xPlacement = .trailing   // labels right-aligned
-        grid.column(at: 1).xPlacement = .leading     // values left-aligned
+        grid.column(at: 0).xPlacement = .trailing
+        grid.column(at: 1).xPlacement = .leading
         grid.column(at: 0).width = 120
-
-        // Row spacing
         grid.rowSpacing = 10
         grid.columnSpacing = 12
 
-        // Merge section header rows across both columns
-        for (i, row) in rows.enumerated() {
-            if row.count == 1 {
-                grid.cell(atColumnIndex: 0, rowIndex: i).xPlacement = .leading
-                grid.mergeCells(inHorizontalRange: NSRange(location: 0, length: 2), verticalRange: NSRange(location: i, length: 1))
-                // Add top padding before section headers (except first)
-                if i > 0 {
-                    grid.row(at: i).topPadding = 12
-                }
-            }
+        for (i, row) in rows.enumerated() where row.count == 1 {
+            grid.cell(atColumnIndex: 0, rowIndex: i).xPlacement = .leading
+            grid.mergeCells(inHorizontalRange: NSRange(location: 0, length: 2),
+                            verticalRange: NSRange(location: i, length: 1))
+            if i > 0 { grid.row(at: i).topPadding = 12 }
         }
 
         contentView.addSubview(grid)
-
         NSLayoutConstraint.activate([
             grid.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 20),
             grid.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 24),
@@ -120,7 +111,6 @@ final class SettingsWindowController: NSWindowController {
         sep.translatesAutoresizingMaskIntoConstraints = false
         stack.addArrangedSubview(sep)
         sep.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
-
         return stack
     }
 
@@ -132,6 +122,26 @@ final class SettingsWindowController: NSWindowController {
     }
 
     // MARK: - Row Builders
+
+    private func makeSyncRow() -> NSView {
+        let stack = NSStackView()
+        stack.orientation = .vertical
+        stack.alignment = .leading
+        stack.spacing = 2
+
+        syncCheckbox.target = self
+        syncCheckbox.action = #selector(syncToggled)
+
+        syncSubtitle.font = .systemFont(ofSize: 11)
+        syncSubtitle.textColor = .secondaryLabelColor
+        syncSubtitle.lineBreakMode = .byWordWrapping
+        syncSubtitle.maximumNumberOfLines = 2
+        syncSubtitle.preferredMaxLayoutWidth = 320
+
+        stack.addArrangedSubview(syncCheckbox)
+        stack.addArrangedSubview(syncSubtitle)
+        return stack
+    }
 
     private func makeLocationRow() -> NSView {
         let row = NSStackView()
@@ -148,14 +158,16 @@ final class SettingsWindowController: NSWindowController {
         saveLocationLabel.translatesAutoresizingMaskIntoConstraints = false
         saveLocationLabel.widthAnchor.constraint(lessThanOrEqualToConstant: 220).isActive = true
 
-        let chooseBtn = NSButton(title: "Choose…", target: self, action: #selector(chooseSaveLocation))
-        chooseBtn.bezelStyle = .rounded
-        let resetBtn = NSButton(title: "Reset", target: self, action: #selector(resetSaveLocation))
-        resetBtn.bezelStyle = .rounded
+        chooseLocationButton.target = self
+        chooseLocationButton.action = #selector(chooseSaveLocation)
+        chooseLocationButton.bezelStyle = .rounded
+        resetLocationButton.target = self
+        resetLocationButton.action = #selector(resetSaveLocation)
+        resetLocationButton.bezelStyle = .rounded
 
         row.addArrangedSubview(saveLocationLabel)
-        row.addArrangedSubview(chooseBtn)
-        row.addArrangedSubview(resetBtn)
+        row.addArrangedSubview(chooseLocationButton)
+        row.addArrangedSubview(resetLocationButton)
         return row
     }
 
@@ -238,7 +250,22 @@ final class SettingsWindowController: NSWindowController {
 
     private func loadCurrentValues() {
         let settings = AppSettings.shared
+
+        syncCheckbox.state = settings.syncWithICloud ? .on : .off
+        let iCloudAvailable = StorageLocationResolver.iCloudAvailable
+        syncCheckbox.isEnabled = iCloudAvailable
+        if !iCloudAvailable {
+            syncSubtitle.stringValue = "Sign in to iCloud in System Settings to enable sync."
+        } else if settings.syncWithICloud {
+            syncSubtitle.stringValue = "Notes are stored in iCloud Drive › Noted and sync across your devices."
+        } else {
+            syncSubtitle.stringValue = "Notes are stored locally. Turn this on to sync via iCloud Drive."
+        }
+
+        let iCloudOn = settings.syncWithICloud
         saveLocationLabel.stringValue = settings.saveLocationDisplayPath
+        chooseLocationButton.isEnabled = !iCloudOn
+        resetLocationButton.isEnabled  = !iCloudOn
 
         let themeIdx = ThemeRegistry.allThemes.firstIndex(where: { $0.id == settings.defaultThemeID }) ?? 0
         themePopUp.selectItem(at: themeIdx)
@@ -251,6 +278,34 @@ final class SettingsWindowController: NSWindowController {
     }
 
     // MARK: - Actions
+
+    @objc private func syncToggled() {
+        let wantsICloud = (syncCheckbox.state == .on)
+        guard wantsICloud != AppSettings.shared.syncWithICloud else { return }
+
+        let alert = NSAlert()
+        alert.messageText = wantsICloud
+            ? "Move notes to iCloud Drive?"
+            : "Move notes off iCloud Drive?"
+        alert.informativeText = wantsICloud
+            ? "Existing notes will be moved into iCloud Drive › Noted and synced across your devices signed into the same Apple ID."
+            : "Existing notes will be moved out of iCloud Drive and stored locally on this Mac only."
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: wantsICloud ? "Move to iCloud" : "Move Local")
+        alert.addButton(withTitle: "Cancel")
+
+        guard let window = self.window else { return }
+        alert.beginSheetModal(for: window) { [weak self] response in
+            guard let self else { return }
+            guard response == .alertFirstButtonReturn else {
+                self.syncCheckbox.state = AppSettings.shared.syncWithICloud ? .on : .off
+                return
+            }
+            AppSettings.shared.syncWithICloud = wantsICloud
+            AppCoordinator.shared.reloadStorageBackend(migrating: true)
+            self.loadCurrentValues()
+        }
+    }
 
     @objc private func chooseSaveLocation() {
         let panel = NSOpenPanel()
@@ -273,8 +328,9 @@ final class SettingsWindowController: NSWindowController {
         if AppSettings.shared.customSaveLocationURL != nil {
             migrateTo(url: defaultDir)
             AppSettings.shared.customSaveLocationURL = nil
+            AppCoordinator.shared.reloadStorageBackend(migrating: false)
         }
-        saveLocationLabel.stringValue = AppSettings.shared.saveLocationDisplayPath
+        loadCurrentValues()
     }
 
     @objc private func themeChanged() {
@@ -318,7 +374,8 @@ final class SettingsWindowController: NSWindowController {
         do {
             try persistence.migrateNotes(to: url)
             AppSettings.shared.customSaveLocationURL = url
-            saveLocationLabel.stringValue = AppSettings.shared.saveLocationDisplayPath
+            AppCoordinator.shared.reloadStorageBackend(migrating: false)
+            loadCurrentValues()
             Log.persist.info("Save location changed to \(url.path)")
         } catch {
             let alert = NSAlert()

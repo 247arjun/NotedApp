@@ -1,4 +1,5 @@
 import AppKit
+import NotedKit
 
 // MARK: - NoteWindowController
 

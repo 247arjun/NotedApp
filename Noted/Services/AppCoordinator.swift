@@ -1,4 +1,5 @@
 import AppKit
+import NotedKit
 import Combine
 
 // MARK: - AppCoordinator
@@ -12,18 +13,27 @@ final class AppCoordinator: ObservableObject {
 
     let noteStore: NoteStore
     let windowManager: WindowManager
-    let persistenceService: PersistenceService
+    private(set) var persistenceService: PersistenceService
+    private var iCloudObserver: iCloudChangeObserver?
 
     private var allNotesWindowController: AllNotesWindowController?
     private var cancellables = Set<AnyCancellable>()
 
     private init() {
-        let persistence = FilePersistenceService(directory: AppSettings.shared.effectiveSaveDirectory)
+        // Resolve the active storage backend on first launch.
+        let dir = AppSettings.shared.effectiveSaveDirectory
+        let persistence = FilePersistenceService(directory: dir)
         let store = NoteStore(persistenceService: persistence)
 
         self.persistenceService = persistence
         self.noteStore = store
         self.windowManager = WindowManager(noteStore: store)
+
+        // Attach iCloud change observer if we're on iCloud right now.
+        if AppSettings.shared.syncWithICloud,
+           StorageLocationResolver.iCloudDirectory() != nil {
+            installICloudObserver(directory: dir)
+        }
     }
 
     // MARK: - App Lifecycle
@@ -200,5 +210,48 @@ final class AppCoordinator: ObservableObject {
 
     private func currentNoteID() -> UUID? {
         (NSApp.keyWindow?.windowController as? NoteWindowController)?.noteID
+    }
+
+    // MARK: - Storage Backend Switching
+
+    /// Called by Settings when the user flips the "Sync with iCloud" toggle or
+    /// picks a different local folder. Migrates note files, re-points the
+    /// persistence service, and (re)installs the iCloud observer.
+    func reloadStorageBackend(migrating: Bool) {
+        let newURL = AppSettings.shared.effectiveSaveDirectory
+
+        if migrating,
+           let file = persistenceService as? FilePersistenceService,
+           file.notesDirectory != newURL {
+            do {
+                try file.migrateNotes(to: newURL)
+            } catch {
+                Log.persist.error("Backend migration failed: \(error.localizedDescription)")
+            }
+        }
+
+        let newService = FilePersistenceService(directory: newURL)
+        self.persistenceService = newService
+        noteStore.swapPersistenceService(newService)
+        noteStore.loadAll()
+
+        // Reattach / detach iCloud observer based on the new mode.
+        if AppSettings.shared.syncWithICloud,
+           StorageLocationResolver.iCloudDirectory() != nil {
+            installICloudObserver(directory: newURL)
+        } else {
+            iCloudObserver?.stop()
+            iCloudObserver = nil
+            noteStore.attachICloudObserver(nil)
+        }
+
+        Log.persist.info("Reloaded storage backend at \(newURL.path, privacy: .public)")
+    }
+
+    private func installICloudObserver(directory: URL) {
+        let observer = iCloudChangeObserver()
+        observer.start(notesDirectory: directory)
+        iCloudObserver = observer
+        noteStore.attachICloudObserver(observer)
     }
 }

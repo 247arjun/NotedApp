@@ -3,18 +3,9 @@
   "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <!-- App sandbox (required for notarization & iCloud). -->
-    <key>com.apple.security.app-sandbox</key>
-    <true/>
-
-    <!-- Allow user to pick a custom notes folder via NSOpenPanel and persist
-         the security-scoped bookmark across launches. -->
-    <key>com.apple.security.files.user-selected.read-write</key>
-    <true/>
-    <key>com.apple.security.files.bookmarks.app-scope</key>
-    <true/>
-
-    <!-- iCloud Drive ubiquity container for the "Noted" folder. -->
+    <!-- iCloud Drive ubiquity container for the "Noted" folder. Shared with
+         the macOS target so notes sync across all devices on the same Apple
+         ID. -->
     <key>com.apple.developer.icloud-container-identifiers</key>
     <array>
         <string>iCloud.com.noted.app</string>

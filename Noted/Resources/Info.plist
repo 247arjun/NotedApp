@@ -31,5 +31,18 @@
     <string></string>
     <key>NSPrincipalClass</key>
     <string>NSApplication</string>
+    <!-- Surface the iCloud ubiquity container as "Noted" in iCloud Drive. -->
+    <key>NSUbiquitousContainers</key>
+    <dict>
+        <key>iCloud.com.noted.app</key>
+        <dict>
+            <key>NSUbiquitousContainerIsDocumentScopePublic</key>
+            <true/>
+            <key>NSUbiquitousContainerName</key>
+            <string>Noted</string>
+            <key>NSUbiquitousContainerSupportedFolderLevels</key>
+            <string>Any</string>
+        </dict>
+    </dict>
 </dict>
 </plist>
