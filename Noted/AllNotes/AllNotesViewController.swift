@@ -47,12 +47,19 @@ final class AllNotesViewController: NSViewController, NSTableViewDataSource, NST
     var onDeleteNote: ((UUID) -> Void)?
     var onCreateNote: (() -> Void)?
     var isWindowOpen: ((UUID) -> Bool)?
+    /// Fires when the user changes bucket via the toolbar's folder picker
+    /// (or via a programmatic `setBucket(_:)`). The window controller uses
+    /// this to clear the detail pane and update its toolbar group.
+    var onBucketChanged: ((StorageBucket) -> Void)?
 
     // MARK: - Data
 
     private weak var noteStore: NoteStore?
     private var cancellable: AnyCancellable?
     private var searchText: String = ""
+
+    /// Which folder the list is currently showing.
+    private(set) var currentBucket: StorageBucket = .active
 
     /// Pinned notes (section 0)
     private var pinnedNotes: [NoteRecord] = []
@@ -162,7 +169,18 @@ final class AllNotesViewController: NSViewController, NSTableViewDataSource, NST
 
     private func reloadData() {
         guard let store = noteStore else { return }
-        var all = Array(store.notes.values.filter { !$0.isArchived })
+
+        // Source from the right published collection for this bucket.
+        let source: [NoteRecord]
+        switch currentBucket {
+        case .active:
+            source = Array(store.notes.values)
+        case .archived:
+            source = Array(store.archivedNotes.values)
+        case .trash:
+            source = Array(store.trashedNotes.values)
+        }
+        var all = source
 
         // Filter
         if !searchText.isEmpty {
@@ -175,9 +193,15 @@ final class AllNotesViewController: NSViewController, NSTableViewDataSource, NST
         // Sort
         let sorted = sortNotes(all)
 
-        // Split into sections
-        pinnedNotes = sorted.filter { $0.isPinned }
-        otherNotes  = sorted.filter { !$0.isPinned }
+        // Split into sections — pinning only applies inside the Active bucket;
+        // Archived and Trash render as a single flat list (sorted by recency).
+        if currentBucket == .active {
+            pinnedNotes = sorted.filter { $0.isPinned }
+            otherNotes  = sorted.filter { !$0.isPinned }
+        } else {
+            pinnedNotes = []
+            otherNotes  = sorted
+        }
 
         // Build flat row list
         rows = []
@@ -186,20 +210,62 @@ final class AllNotesViewController: NSViewController, NSTableViewDataSource, NST
             rows.append(contentsOf: pinnedNotes.map { .note($0) })
         }
         if !otherNotes.isEmpty {
-            let headerTitle = pinnedNotes.isEmpty ? "Notes" : "Others"
+            let headerTitle: String = {
+                switch currentBucket {
+                case .active:   return pinnedNotes.isEmpty ? "Notes" : "Others"
+                case .archived: return "Archived"
+                case .trash:    return "Trash"
+                }
+            }()
             rows.append(.sectionHeader(headerTitle))
             rows.append(contentsOf: otherNotes.map { .note($0) })
         }
 
         let isEmpty = pinnedNotes.isEmpty && otherNotes.isEmpty
         emptyLabel.isHidden = !isEmpty
-        emptyLabel.stringValue = searchText.isEmpty ? "No notes yet" : "No matching notes"
+        emptyLabel.stringValue = emptyLabelText(isSearching: !searchText.isEmpty)
         scrollView.isHidden = isEmpty
 
         tableView.reloadData()
     }
 
+    private func emptyLabelText(isSearching: Bool) -> String {
+        if isSearching { return "No matching notes" }
+        switch currentBucket {
+        case .active:   return "No notes yet"
+        case .archived: return "No archived notes"
+        case .trash:    return "Trash is empty"
+        }
+    }
+
+    /// Switch which bucket the list is showing. Triggers an on-demand load
+    /// for Archived / Trash since those aren't loaded at app launch.
+    func setBucket(_ bucket: StorageBucket) {
+        guard currentBucket != bucket else { return }
+        currentBucket = bucket
+        tableView.deselectAll(nil)
+
+        // Adapt context menu + sort UI to the bucket
+        tableView.menu = buildContextMenu()
+
+        // Lazy-load the auxiliary buckets the first time they're visited (or
+        // re-load to pick up any iCloud changes since last visit).
+        switch bucket {
+        case .archived: noteStore?.loadArchived()
+        case .trash:    noteStore?.loadTrashed()
+        case .active:   break
+        }
+
+        reloadData()
+        onBucketChanged?(bucket)
+    }
+
     private func sortNotes(_ notes: [NoteRecord]) -> [NoteRecord] {
+        // Trash sorts by trashedAt (newest first) by default — easier to find
+        // a freshly-deleted note when looking for "wait, what did I just kill".
+        if currentBucket == .trash {
+            return notes.sorted { ($0.trashedAt ?? $0.updatedAt) > ($1.trashedAt ?? $1.updatedAt) }
+        }
         switch sortMode {
         case .updatedDate:
             return notes.sorted { $0.updatedAt > $1.updatedAt }
@@ -291,10 +357,9 @@ final class AllNotesViewController: NSViewController, NSTableViewDataSource, NST
     func tableView(_ tableView: NSTableView, rowActionsForRow row: Int, edge: NSTableView.RowActionEdge) -> [NSTableViewRowAction] {
         guard let note = noteAt(row: row) else { return [] }
 
-        switch edge {
-        case .trailing:
-            // Swipe left → Delete (sends to Trash with 30-day grace)
-            //   + Archive (stowed away in the Archived bucket, not loaded on launch)
+        switch (currentBucket, edge) {
+        case (.active, .trailing):
+            // Swipe left → Delete (sends to Trash) + Archive
             let delete = NSTableViewRowAction(style: .destructive, title: "Delete") { [weak self] _, _ in
                 self?.onDeleteNote?(note.id)
             }
@@ -307,7 +372,7 @@ final class AllNotesViewController: NSViewController, NSTableViewDataSource, NST
             archive.image = NSImage(systemSymbolName: "archivebox", accessibilityDescription: "Archive")
             return [delete, archive]
 
-        case .leading:
+        case (.active, .leading):
             // Swipe right → Pin/Unpin
             let isPinned = note.isPinned
             let title = isPinned ? "Unpin" : "Pin"
@@ -316,6 +381,38 @@ final class AllNotesViewController: NSViewController, NSTableViewDataSource, NST
             }
             pin.backgroundColor = .systemOrange
             return [pin]
+
+        case (.archived, .trailing):
+            // Swipe left → Move to Trash (destructive) + Restore
+            let trash = NSTableViewRowAction(style: .destructive, title: "Trash") { [weak self] _, _ in
+                self?.noteStore?.trash(noteID: note.id)
+            }
+            trash.backgroundColor = .systemRed
+
+            let restore = NSTableViewRowAction(style: .regular, title: "Restore") { [weak self] _, _ in
+                self?.noteStore?.unarchive(noteID: note.id)
+            }
+            restore.backgroundColor = .systemGreen
+            restore.image = NSImage(systemSymbolName: "arrow.uturn.backward", accessibilityDescription: "Restore")
+            return [trash, restore]
+
+        case (.trash, .trailing):
+            // Swipe left → Delete Forever + Restore
+            let deleteForever = NSTableViewRowAction(style: .destructive, title: "Delete Forever") { [weak self] _, _ in
+                self?.noteStore?.deleteForever(noteID: note.id)
+            }
+            deleteForever.backgroundColor = .systemRed
+
+            let restore = NSTableViewRowAction(style: .regular, title: "Restore") { [weak self] _, _ in
+                self?.noteStore?.restoreFromTrash(noteID: note.id)
+            }
+            restore.backgroundColor = .systemGreen
+            restore.image = NSImage(systemSymbolName: "arrow.uturn.backward", accessibilityDescription: "Restore")
+            return [deleteForever, restore]
+
+        case (.archived, .leading), (.trash, .leading):
+            // Pin doesn't apply to archived / trashed notes.
+            return []
 
         @unknown default:
             return []
@@ -419,15 +516,25 @@ final class AllNotesViewController: NSViewController, NSTableViewDataSource, NST
 
     private func buildContextMenu() -> NSMenu {
         let menu = NSMenu()
-        menu.addItem(withTitle: "Open in Window", action: #selector(contextOpen(_:)), keyEquivalent: "").target = self
-        menu.addItem(.separator())
-        let pinItem = menu.addItem(withTitle: "Pin / Unpin", action: #selector(contextPin(_:)), keyEquivalent: "")
-        pinItem.target = self
-        let archiveItem = menu.addItem(withTitle: "Archive", action: #selector(contextArchive(_:)), keyEquivalent: "")
-        archiveItem.target = self
-        menu.addItem(.separator())
-        let deleteItem = menu.addItem(withTitle: "Delete", action: #selector(contextDelete(_:)), keyEquivalent: "")
-        deleteItem.target = self
+        switch currentBucket {
+        case .active:
+            menu.addItem(withTitle: "Open in Window", action: #selector(contextOpen(_:)), keyEquivalent: "").target = self
+            menu.addItem(.separator())
+            menu.addItem(withTitle: "Pin / Unpin", action: #selector(contextPin(_:)), keyEquivalent: "").target = self
+            menu.addItem(withTitle: "Archive",     action: #selector(contextArchive(_:)), keyEquivalent: "").target = self
+            menu.addItem(.separator())
+            menu.addItem(withTitle: "Delete",      action: #selector(contextDelete(_:)), keyEquivalent: "").target = self
+
+        case .archived:
+            menu.addItem(withTitle: "Restore to Notes", action: #selector(contextRestore(_:)), keyEquivalent: "").target = self
+            menu.addItem(.separator())
+            menu.addItem(withTitle: "Move to Trash",    action: #selector(contextMoveToTrash(_:)), keyEquivalent: "").target = self
+
+        case .trash:
+            menu.addItem(withTitle: "Restore",          action: #selector(contextRestore(_:)), keyEquivalent: "").target = self
+            menu.addItem(.separator())
+            menu.addItem(withTitle: "Delete Forever…",  action: #selector(contextDeleteForever(_:)), keyEquivalent: "").target = self
+        }
         return menu
     }
 
@@ -435,6 +542,37 @@ final class AllNotesViewController: NSViewController, NSTableViewDataSource, NST
         let row = tableView.clickedRow >= 0 ? tableView.clickedRow : tableView.selectedRow
         guard let note = noteAt(row: row) else { return }
         noteStore?.archive(noteID: note.id)
+    }
+
+    @objc private func contextRestore(_ sender: Any?) {
+        let row = tableView.clickedRow >= 0 ? tableView.clickedRow : tableView.selectedRow
+        guard let note = noteAt(row: row) else { return }
+        switch currentBucket {
+        case .archived: noteStore?.unarchive(noteID: note.id)
+        case .trash:    noteStore?.restoreFromTrash(noteID: note.id)
+        case .active:   break
+        }
+    }
+
+    @objc private func contextMoveToTrash(_ sender: Any?) {
+        let row = tableView.clickedRow >= 0 ? tableView.clickedRow : tableView.selectedRow
+        guard let note = noteAt(row: row) else { return }
+        noteStore?.trash(noteID: note.id)
+    }
+
+    @objc private func contextDeleteForever(_ sender: Any?) {
+        let row = tableView.clickedRow >= 0 ? tableView.clickedRow : tableView.selectedRow
+        guard let note = noteAt(row: row), let window = view.window else { return }
+        let alert = NSAlert()
+        alert.messageText = "Delete Forever?"
+        alert.informativeText = "This note will be permanently removed. This action cannot be undone."
+        alert.alertStyle = .critical
+        alert.addButton(withTitle: "Delete Forever")
+        alert.addButton(withTitle: "Cancel")
+        alert.beginSheetModal(for: window) { [weak self] response in
+            guard response == .alertFirstButtonReturn else { return }
+            self?.noteStore?.deleteForever(noteID: note.id)
+        }
     }
 }
 

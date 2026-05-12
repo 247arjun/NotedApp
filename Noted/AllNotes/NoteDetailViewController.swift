@@ -15,25 +15,40 @@ final class NoteDetailViewController: NSViewController, NoteContentViewDelegate 
     var onDeleteNote: ((UUID) -> Void)?
     var onThemeChanged: ((UUID, String) -> Void)?
     var onWindowColorChanged: ((NSColor?) -> Void)?
+    /// Fires when the user taps Restore on a read-only (archived/trashed)
+    /// note. The window controller jumps the list back to .active and
+    /// re-selects the now-restored note.
+    var onRestoreNote: ((UUID) -> Void)?
+    /// Fires when the user picks "Delete Forever" on a trashed note.
+    var onDeleteForever: ((UUID) -> Void)?
+    /// Fires when the user picks "Move to Trash" on an archived note.
+    var onMoveToTrash: ((UUID) -> Void)?
 
     // MARK: - State
 
     private(set) var currentNoteID: UUID?
+    /// Bucket that the currently-displayed note lives in. Drives the toolbar
+    /// item group and whether the editor is read-only.
+    private(set) var currentNoteBucket: StorageBucket = .active
     private weak var noteStore: NoteStore?
     private var editorCoordinator: NoteEditorCoordinator?
 
     private var noteContentView: NoteContentView?
     private let placeholderLabel = NSTextField(labelWithString: "Select a note")
+    private var readOnlyBanner: ReadOnlyBannerView?
     private var storeCancellable: AnyCancellable?
     private var themePopover: NSPopover?
 
     // MARK: - Toolbar Item IDs
 
-    static let controlGroupID = NSToolbarItem.Identifier("NoteControlGroup")
-    static let pinItemID      = NSToolbarItem.Identifier("PinItem")
-    static let themeItemID    = NSToolbarItem.Identifier("ThemeItem")
-    static let deleteItemID   = NSToolbarItem.Identifier("DeleteItem")
-    static let closeItemID    = NSToolbarItem.Identifier("CloseItem")
+    static let controlGroupID    = NSToolbarItem.Identifier("NoteControlGroup")
+    static let pinItemID         = NSToolbarItem.Identifier("PinItem")
+    static let themeItemID       = NSToolbarItem.Identifier("ThemeItem")
+    static let deleteItemID      = NSToolbarItem.Identifier("DeleteItem")
+    static let closeItemID       = NSToolbarItem.Identifier("CloseItem")
+    static let restoreItemID     = NSToolbarItem.Identifier("RestoreItem")
+    static let trashItemID       = NSToolbarItem.Identifier("TrashItem")
+    static let purgeItemID       = NSToolbarItem.Identifier("PurgeItem")
 
     // MARK: - Init
 
@@ -79,32 +94,54 @@ final class NoteDetailViewController: NSViewController, NoteContentViewDelegate 
 
     // MARK: - Public
 
-    func showNote(id: UUID) {
-        guard let store = noteStore, let note = store.notes[id] else { return }
+    /// Find a note by id across all three buckets — Active, Archived, Trash.
+    private func locateNote(id: UUID) -> (note: NoteRecord, bucket: StorageBucket)? {
+        guard let store = noteStore else { return nil }
+        if let n = store.notes[id]         { return (n, .active) }
+        if let n = store.archivedNotes[id] { return (n, .archived) }
+        if let n = store.trashedNotes[id]  { return (n, .trash) }
+        return nil
+    }
 
-        if currentNoteID == id, let contentView = noteContentView {
+    func showNote(id: UUID) {
+        guard let store = noteStore, let resolved = locateNote(id: id) else { return }
+        let note   = resolved.note
+        let bucket = resolved.bucket
+        let isReadOnly = bucket != .active
+
+        if currentNoteID == id, currentNoteBucket == bucket, let contentView = noteContentView {
             contentView.titleField.stringValue = note.title
             contentView.updatePinState(note.isPinned)
+            contentView.isReadOnly = isReadOnly
             refreshToolbarItems()
             return
         }
 
+        // Rebuild content view from scratch when switching notes or buckets.
         noteContentView?.removeFromSuperview()
         noteContentView = nil
         editorCoordinator = nil
+        readOnlyBanner?.removeFromSuperview()
+        readOnlyBanner = nil
 
         currentNoteID = id
+        currentNoteBucket = bucket
         placeholderLabel.isHidden = true
 
         let theme = ThemeRegistry.theme(for: note.themeID)
         let contentView = NoteContentView(noteID: id, theme: theme)
         contentView.delegate = self
         contentView.hidesHeaderControls = true   // controls live in toolbar
+        contentView.isReadOnly = isReadOnly
         contentView.translatesAutoresizingMaskIntoConstraints = false
 
-        let coordinator = NoteEditorCoordinator(noteID: id, noteStore: store)
-        contentView.textView.delegate = coordinator
-        self.editorCoordinator = coordinator
+        // Only wire up the editor coordinator (which saves edits) when the
+        // note is active. Read-only views don't push edits back to the store.
+        if !isReadOnly {
+            let coordinator = NoteEditorCoordinator(noteID: id, noteStore: store)
+            contentView.textView.delegate = coordinator
+            self.editorCoordinator = coordinator
+        }
 
         contentView.titleField.stringValue = note.title
         contentView.loadBody(from: note.attributedBodyData)
@@ -112,11 +149,27 @@ final class NoteDetailViewController: NSViewController, NoteContentViewDelegate 
 
         view.addSubview(contentView)
 
-        contentView.layer?.cornerRadius = 0
-        contentView.layer?.masksToBounds = false
+        // For Archived / Trash, add a banner above the content view.
+        let topAnchor: NSLayoutYAxisAnchor
+        if isReadOnly {
+            let banner = ReadOnlyBannerView(bucket: bucket,
+                                            trashedAt: note.trashedAt,
+                                            onRestore: { [weak self] in self?.restoreCurrentNote() })
+            banner.translatesAutoresizingMaskIntoConstraints = false
+            view.addSubview(banner)
+            NSLayoutConstraint.activate([
+                banner.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+                banner.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+                banner.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            ])
+            readOnlyBanner = banner
+            topAnchor = banner.bottomAnchor
+        } else {
+            topAnchor = view.safeAreaLayoutGuide.topAnchor
+        }
 
         NSLayoutConstraint.activate([
-            contentView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            contentView.topAnchor.constraint(equalTo: topAnchor),
             contentView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             contentView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             contentView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
@@ -126,8 +179,10 @@ final class NoteDetailViewController: NSViewController, NoteContentViewDelegate 
         updateWindowColor(for: theme)
         refreshToolbarItems()
 
-        DispatchQueue.main.async {
-            self.view.window?.makeFirstResponder(contentView.textView)
+        if !isReadOnly {
+            DispatchQueue.main.async {
+                self.view.window?.makeFirstResponder(contentView.textView)
+            }
         }
     }
 
@@ -135,22 +190,38 @@ final class NoteDetailViewController: NSViewController, NoteContentViewDelegate 
         noteContentView?.removeFromSuperview()
         noteContentView = nil
         editorCoordinator = nil
+        readOnlyBanner?.removeFromSuperview()
+        readOnlyBanner = nil
         currentNoteID = nil
+        currentNoteBucket = .active
         placeholderLabel.isHidden = false
         onWindowColorChanged?(nil)
         refreshToolbarItems()
     }
 
+    private func restoreCurrentNote() {
+        guard let id = currentNoteID else { return }
+        onRestoreNote?(id)
+    }
+
     /// Refresh the detail pane from the store if an external change occurred
-    /// (e.g. the user edited the same note in a standalone window).
+    /// (e.g. the user edited the same note in a standalone window, or an
+    /// iCloud update arrived).
     private func refreshFromStoreIfNeeded() {
         guard let id = currentNoteID,
-              let store = noteStore,
-              let note = store.notes[id],
+              let resolved = locateNote(id: id),
               let contentView = noteContentView else { return }
+        let note = resolved.note
 
         // Skip if our own editor coordinator made this change
         if editorCoordinator?.isLocalEdit == true { return }
+
+        // The note's bucket may have changed under us (e.g. user archived
+        // from a context menu). Re-show to rebuild the surface correctly.
+        if resolved.bucket != currentNoteBucket {
+            showNote(id: id)
+            return
+        }
 
         // Refresh title
         if contentView.titleField.stringValue != note.title {
@@ -202,33 +273,14 @@ final class NoteDetailViewController: NSViewController, NoteContentViewDelegate 
         }
     }
 
-    /// Creates the NSToolbarItemGroup for pin/theme/delete/close.
+    /// Creates the NSToolbarItemGroup whose contents vary by the current
+    /// note's bucket:
+    ///   .active   → [Pin, Color, Delete, Close]
+    ///   .archived → [Restore, Move to Trash, Close]
+    ///   .trash    → [Restore, Delete Forever, Close]
     /// Called by the window controller's toolbar delegate.
     func makeControlGroupItem() -> NSToolbarItem {
         let iconConfig = NSImage.SymbolConfiguration(pointSize: 13, weight: .medium)
-
-        let pinItem = NSToolbarItem(itemIdentifier: Self.pinItemID)
-        let isPinned = noteStore?.notes[currentNoteID ?? UUID()]?.isPinned ?? false
-        let pinSymbol = isPinned ? "pin.fill" : "pin"
-        pinItem.image = NSImage(systemSymbolName: pinSymbol, accessibilityDescription: isPinned ? "Unpin note" : "Pin note")?
-            .withSymbolConfiguration(iconConfig)
-        pinItem.label = "Pin"
-        pinItem.target = self
-        pinItem.action = #selector(toolbarPinClicked)
-
-        let themeItem = NSToolbarItem(itemIdentifier: Self.themeItemID)
-        themeItem.image = NSImage(systemSymbolName: "paintpalette", accessibilityDescription: "Change note color")?
-            .withSymbolConfiguration(iconConfig)
-        themeItem.label = "Color"
-        themeItem.target = self
-        themeItem.action = #selector(toolbarThemeClicked(_:))
-
-        let deleteItem = NSToolbarItem(itemIdentifier: Self.deleteItemID)
-        deleteItem.image = NSImage(systemSymbolName: "trash", accessibilityDescription: "Delete note")?
-            .withSymbolConfiguration(iconConfig)
-        deleteItem.label = "Delete"
-        deleteItem.target = self
-        deleteItem.action = #selector(toolbarDeleteClicked)
 
         let closeItem = NSToolbarItem(itemIdentifier: Self.closeItemID)
         closeItem.image = NSImage(systemSymbolName: "xmark", accessibilityDescription: "Close preview")?
@@ -238,10 +290,78 @@ final class NoteDetailViewController: NSViewController, NoteContentViewDelegate 
         closeItem.action = #selector(toolbarCloseClicked)
 
         let group = NSToolbarItemGroup(itemIdentifier: Self.controlGroupID)
-        group.subitems = [pinItem, themeItem, deleteItem, closeItem]
         group.controlRepresentation = .automatic
         group.selectionMode = .momentary
         group.label = "Note Actions"
+
+        switch currentNoteBucket {
+        case .active:
+            let pinItem = NSToolbarItem(itemIdentifier: Self.pinItemID)
+            let isPinned = noteStore?.notes[currentNoteID ?? UUID()]?.isPinned ?? false
+            pinItem.image = NSImage(systemSymbolName: isPinned ? "pin.fill" : "pin",
+                                    accessibilityDescription: isPinned ? "Unpin note" : "Pin note")?
+                .withSymbolConfiguration(iconConfig)
+            pinItem.label = "Pin"
+            pinItem.target = self
+            pinItem.action = #selector(toolbarPinClicked)
+
+            let themeItem = NSToolbarItem(itemIdentifier: Self.themeItemID)
+            themeItem.image = NSImage(systemSymbolName: "paintpalette",
+                                      accessibilityDescription: "Change note color")?
+                .withSymbolConfiguration(iconConfig)
+            themeItem.label = "Color"
+            themeItem.target = self
+            themeItem.action = #selector(toolbarThemeClicked(_:))
+
+            let deleteItem = NSToolbarItem(itemIdentifier: Self.deleteItemID)
+            deleteItem.image = NSImage(systemSymbolName: "trash",
+                                       accessibilityDescription: "Delete note")?
+                .withSymbolConfiguration(iconConfig)
+            deleteItem.label = "Delete"
+            deleteItem.target = self
+            deleteItem.action = #selector(toolbarDeleteClicked)
+
+            group.subitems = [pinItem, themeItem, deleteItem, closeItem]
+
+        case .archived:
+            let restoreItem = NSToolbarItem(itemIdentifier: Self.restoreItemID)
+            restoreItem.image = NSImage(systemSymbolName: "arrow.uturn.backward",
+                                        accessibilityDescription: "Restore note")?
+                .withSymbolConfiguration(iconConfig)
+            restoreItem.label = "Restore"
+            restoreItem.target = self
+            restoreItem.action = #selector(toolbarRestoreClicked)
+
+            let trashItem = NSToolbarItem(itemIdentifier: Self.trashItemID)
+            trashItem.image = NSImage(systemSymbolName: "trash",
+                                      accessibilityDescription: "Move to Trash")?
+                .withSymbolConfiguration(iconConfig)
+            trashItem.label = "Trash"
+            trashItem.target = self
+            trashItem.action = #selector(toolbarMoveToTrashClicked)
+
+            group.subitems = [restoreItem, trashItem, closeItem]
+
+        case .trash:
+            let restoreItem = NSToolbarItem(itemIdentifier: Self.restoreItemID)
+            restoreItem.image = NSImage(systemSymbolName: "arrow.uturn.backward",
+                                        accessibilityDescription: "Restore note")?
+                .withSymbolConfiguration(iconConfig)
+            restoreItem.label = "Restore"
+            restoreItem.target = self
+            restoreItem.action = #selector(toolbarRestoreClicked)
+
+            let purgeItem = NSToolbarItem(itemIdentifier: Self.purgeItemID)
+            purgeItem.image = NSImage(systemSymbolName: "trash.slash",
+                                      accessibilityDescription: "Delete Forever")?
+                .withSymbolConfiguration(iconConfig)
+            purgeItem.label = "Delete Forever"
+            purgeItem.target = self
+            purgeItem.action = #selector(toolbarDeleteForeverClicked)
+
+            group.subitems = [restoreItem, purgeItem, closeItem]
+        }
+
         return group
     }
 
@@ -251,6 +371,29 @@ final class NoteDetailViewController: NSViewController, NoteContentViewDelegate 
         guard let cv = noteContentView else { return }
         noteContentViewDidClickPin(cv)
         refreshToolbarItems()
+    }
+
+    @objc private func toolbarRestoreClicked() {
+        restoreCurrentNote()
+    }
+
+    @objc private func toolbarMoveToTrashClicked() {
+        guard let id = currentNoteID else { return }
+        onMoveToTrash?(id)
+    }
+
+    @objc private func toolbarDeleteForeverClicked() {
+        guard let id = currentNoteID, let window = view.window else { return }
+        let alert = NSAlert()
+        alert.messageText = "Delete Forever?"
+        alert.informativeText = "This note will be permanently removed. This action cannot be undone."
+        alert.alertStyle = .critical
+        alert.addButton(withTitle: "Delete Forever")
+        alert.addButton(withTitle: "Cancel")
+        alert.beginSheetModal(for: window) { [weak self] response in
+            guard response == .alertFirstButtonReturn else { return }
+            self?.onDeleteForever?(id)
+        }
     }
 
     @objc private func toolbarThemeClicked(_ sender: Any?) {
@@ -343,5 +486,100 @@ final class NoteDetailViewController: NSViewController, NoteContentViewDelegate 
     private func updateWindowColor(for theme: NoteTheme) {
         let tinted = theme.bodyBackgroundColor.withAlphaComponent(0.85)
         onWindowColorChanged?(tinted)
+    }
+}
+
+// MARK: - ReadOnlyBannerView
+
+/// Banner shown above the read-only preview of an Archived / Trashed note in
+/// the All Notes detail pane. Matches the iOS read-only banner styling.
+final class ReadOnlyBannerView: NSView {
+
+    init(bucket: StorageBucket, trashedAt: Date?, onRestore: @escaping () -> Void) {
+        super.init(frame: .zero)
+        wantsLayer = true
+        layer?.backgroundColor = NSColor.controlBackgroundColor.withAlphaComponent(0.85).cgColor
+
+        let symbol = NSImageView()
+        let cfg = NSImage.SymbolConfiguration(pointSize: 16, weight: .semibold)
+        symbol.image = NSImage(
+            systemSymbolName: bucket == .archived ? "archivebox.fill" : "trash.fill",
+            accessibilityDescription: nil
+        )?.withSymbolConfiguration(cfg)
+        symbol.contentTintColor = bucket == .archived ? .systemGray : .systemRed
+        symbol.translatesAutoresizingMaskIntoConstraints = false
+
+        let title = NSTextField(labelWithString: bucket == .archived ? "Archived" : "In Trash")
+        title.font = .systemFont(ofSize: 13, weight: .semibold)
+        title.translatesAutoresizingMaskIntoConstraints = false
+
+        let subtitle = NSTextField(labelWithString: Self.subtitleText(bucket: bucket, trashedAt: trashedAt))
+        subtitle.font = .systemFont(ofSize: 11)
+        subtitle.textColor = .secondaryLabelColor
+        subtitle.translatesAutoresizingMaskIntoConstraints = false
+
+        let stack = NSStackView()
+        stack.orientation = .vertical
+        stack.alignment = .leading
+        stack.spacing = 1
+        stack.addArrangedSubview(title)
+        stack.addArrangedSubview(subtitle)
+        stack.translatesAutoresizingMaskIntoConstraints = false
+
+        let restore = NSButton(title: "Restore", target: nil, action: nil)
+        restore.bezelStyle = .rounded
+        restore.controlSize = .small
+        restore.translatesAutoresizingMaskIntoConstraints = false
+        restore.target = nil
+        let action = ActionBox(handler: onRestore)
+        objc_setAssociatedObject(restore, &Self.actionBoxKey, action, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+        restore.target = action
+        restore.action = #selector(ActionBox.invoke)
+
+        addSubview(symbol)
+        addSubview(stack)
+        addSubview(restore)
+
+        NSLayoutConstraint.activate([
+            heightAnchor.constraint(greaterThanOrEqualToConstant: 44),
+            symbol.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
+            symbol.centerYAnchor.constraint(equalTo: centerYAnchor),
+
+            stack.leadingAnchor.constraint(equalTo: symbol.trailingAnchor, constant: 12),
+            stack.centerYAnchor.constraint(equalTo: centerYAnchor),
+            stack.trailingAnchor.constraint(lessThanOrEqualTo: restore.leadingAnchor, constant: -12),
+
+            restore.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -16),
+            restore.centerYAnchor.constraint(equalTo: centerYAnchor),
+        ])
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError() }
+
+    private static func subtitleText(bucket: StorageBucket, trashedAt: Date?) -> String {
+        switch bucket {
+        case .archived:
+            return "Restore to edit this note."
+        case .trash:
+            if let t = trashedAt {
+                let daysLeft = max(0, 30 - Int(Date().timeIntervalSince(t) / 86_400))
+                return "Permanently deleted in \(daysLeft) day\(daysLeft == 1 ? "" : "s")."
+            }
+            return "Restore to edit this note."
+        case .active:
+            return ""
+        }
+    }
+
+    // MARK: - Closure-to-target shim
+
+    nonisolated(unsafe) private static var actionBoxKey: UInt8 = 0
+
+    @MainActor
+    final class ActionBox: NSObject {
+        let handler: () -> Void
+        init(handler: @escaping () -> Void) { self.handler = handler }
+        @objc func invoke() { handler() }
     }
 }

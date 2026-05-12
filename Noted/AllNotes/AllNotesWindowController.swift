@@ -23,6 +23,7 @@ final class AllNotesWindowController: NSWindowController, NSToolbarDelegate {
     private static let searchItemID    = NSToolbarItem.Identifier("SearchItem")
     private static let createItemID    = NSToolbarItem.Identifier("CreateItem")
     private static let sortItemID      = NSToolbarItem.Identifier("SortItem")
+    private static let folderItemID    = NSToolbarItem.Identifier("FolderItem")
 
     convenience init(
         noteStore: NoteStore,
@@ -101,6 +102,40 @@ final class AllNotesWindowController: NSWindowController, NSToolbarDelegate {
         self.listVC = listVC
         self.detailVC = detailVC
         self.noteStore = noteStore
+
+        // ── Wire bucket-change side effects (post-init: self is valid). ──
+        listVC.onBucketChanged = { [weak self] bucket in
+            guard let self else { return }
+            self.detailVC.clearDetail()
+            self.refreshFolderToolbarItem()
+            self.window?.title = bucket == .active ? "All Notes"
+                                : bucket == .archived ? "Archived"
+                                : "Trash"
+        }
+
+        detailVC.onRestoreNote = { [weak self] id in
+            guard let self else { return }
+            switch self.listVC.currentBucket {
+            case .archived: self.noteStore?.unarchive(noteID: id)
+            case .trash:    self.noteStore?.restoreFromTrash(noteID: id)
+            case .active:   break
+            }
+            // Jump back to Active so the user can keep working with the note.
+            self.setBucket(.active)
+            self.detailVC.clearDetail()
+            self.listVC.selectNote(id: id)
+            self.detailVC.showNote(id: id)
+        }
+
+        detailVC.onMoveToTrash = { [weak self] id in
+            self?.noteStore?.trash(noteID: id)
+            self?.detailVC.clearDetail()
+        }
+
+        detailVC.onDeleteForever = { [weak self] id in
+            self?.noteStore?.deleteForever(noteID: id)
+            self?.detailVC.clearDetail()
+        }
     }
 
     func showWindow() {
@@ -117,15 +152,38 @@ final class AllNotesWindowController: NSWindowController, NSToolbarDelegate {
         NSApp.activate(ignoringOtherApps: true)
     }
 
+    /// Switch the list to a given bucket. Safe to call before the window has
+    /// been shown (used by AppCoordinator's Archive / Trash menu commands).
+    func setBucket(_ bucket: StorageBucket) {
+        listVC.setBucket(bucket)
+        // onBucketChanged handles the rest (clear detail, update title, refresh icon).
+    }
+
     func selectNote(id: UUID) {
         listVC.selectNote(id: id)
         detailVC.showNote(id: id)
+    }
+
+    /// Rebuilds the folder toolbar item so its label/icon reflects the
+    /// currently-selected bucket and the popup menu's checkmark is correct.
+    private func refreshFolderToolbarItem() {
+        guard let toolbar = window?.toolbar,
+              let item = toolbar.items.first(where: { $0.itemIdentifier == Self.folderItemID }) as? NSMenuToolbarItem else { return }
+        configureFolderItem(item)
     }
 
     // MARK: - NSToolbarDelegate
 
     func toolbar(_ toolbar: NSToolbar, itemForItemIdentifier itemIdentifier: NSToolbarItem.Identifier, willBeInsertedIntoToolbar flag: Bool) -> NSToolbarItem? {
         switch itemIdentifier {
+
+        case Self.folderItemID:
+            let item = NSMenuToolbarItem(itemIdentifier: itemIdentifier)
+            item.label = "Folder"
+            item.toolTip = "Switch folder"
+            item.showsIndicator = true
+            configureFolderItem(item)
+            return item
 
         case Self.searchItemID:
             let item = NSSearchToolbarItem(itemIdentifier: itemIdentifier)
@@ -176,6 +234,7 @@ final class AllNotesWindowController: NSWindowController, NSToolbarDelegate {
 
     func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
         [
+            Self.folderItemID,
             Self.searchItemID,
             Self.createItemID,
             Self.sortItemID,
@@ -186,6 +245,7 @@ final class AllNotesWindowController: NSWindowController, NSToolbarDelegate {
 
     func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
         [
+            Self.folderItemID,
             Self.searchItemID,
             Self.createItemID,
             Self.sortItemID,
@@ -194,6 +254,45 @@ final class AllNotesWindowController: NSWindowController, NSToolbarDelegate {
             .space,
             NoteDetailViewController.controlGroupID,
         ]
+    }
+
+    // MARK: - Folder Action
+
+    private func configureFolderItem(_ item: NSMenuToolbarItem) {
+        let current = listVC.currentBucket
+        let symbolName: String
+        switch current {
+        case .active:   symbolName = "tray.2"
+        case .archived: symbolName = "archivebox"
+        case .trash:    symbolName = "trash"
+        }
+        let cfg = NSImage.SymbolConfiguration(pointSize: 14, weight: .medium)
+        item.image = NSImage(systemSymbolName: symbolName, accessibilityDescription: "Folder")?
+            .withSymbolConfiguration(cfg)
+
+        let menu = NSMenu()
+        for bucket in [StorageBucket.active, .archived, .trash] {
+            let title: String
+            let sym: String
+            switch bucket {
+            case .active:   title = "Notes";    sym = "tray.2"
+            case .archived: title = "Archived"; sym = "archivebox"
+            case .trash:    title = "Trash";    sym = "trash"
+            }
+            let mi = NSMenuItem(title: title, action: #selector(folderItemSelected(_:)), keyEquivalent: "")
+            mi.target = self
+            mi.representedObject = bucket.rawValue
+            mi.image = NSImage(systemSymbolName: sym, accessibilityDescription: nil)
+            if bucket == current { mi.state = .on }
+            menu.addItem(mi)
+        }
+        item.menu = menu
+    }
+
+    @objc private func folderItemSelected(_ sender: NSMenuItem) {
+        guard let raw = sender.representedObject as? String,
+              let bucket = StorageBucket(rawValue: raw) else { return }
+        setBucket(bucket)
     }
 
     // MARK: - Sort Action

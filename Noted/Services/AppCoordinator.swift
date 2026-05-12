@@ -136,31 +136,19 @@ final class AppCoordinator: ObservableObject, NoteIntentHost {
     }
 
     @objc func showArchive() {
-        bucketBrowser(.archived).showWindow()
+        openAllNotes(bucket: .archived)
     }
 
     @objc func showTrash() {
-        bucketBrowser(.trash).showWindow()
+        openAllNotes(bucket: .trash)
     }
 
-    private var archiveBrowser: BucketBrowserWindowController?
-    private var trashBrowser:   BucketBrowserWindowController?
-
-    private func bucketBrowser(_ bucket: StorageBucket) -> BucketBrowserWindowController {
-        switch bucket {
-        case .archived:
-            if let c = archiveBrowser { return c }
-            let c = BucketBrowserWindowController(noteStore: noteStore, bucket: .archived)
-            archiveBrowser = c
-            return c
-        case .trash:
-            if let c = trashBrowser { return c }
-            let c = BucketBrowserWindowController(noteStore: noteStore, bucket: .trash)
-            trashBrowser = c
-            return c
-        case .active:
-            fatalError("Use AllNotesWindowController for the active bucket.")
-        }
+    /// Open (or focus) the All Notes window with a specific bucket selected.
+    /// Named distinctly from the @objc `showAllNotes()` so #selector(showAllNotes)
+    /// in the menu wiring resolves unambiguously to the no-arg version.
+    func openAllNotes(bucket: StorageBucket) {
+        showAllNotes()
+        allNotesWindowController?.setBucket(bucket)
     }
 
     // MARK: - All Notes Window

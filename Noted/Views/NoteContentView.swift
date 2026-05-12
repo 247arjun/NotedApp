@@ -60,6 +60,16 @@ final class NoteContentView: NSView {
         }
     }
 
+    /// When true, the title field and the body text view become non-editable.
+    /// Used when the detail pane shows an Archived or Trashed note.
+    var isReadOnly: Bool = false {
+        didSet {
+            titleField.isEditable = !isReadOnly
+            titleField.isSelectable = true
+            textView.isEditable = !isReadOnly
+        }
+    }
+
     // Theme popover
     private var themePopover: NSPopover?
 

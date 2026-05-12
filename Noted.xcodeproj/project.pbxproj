@@ -35,7 +35,6 @@
 		C67FDFA8A0719DDF38B52FCC /* BucketListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CFD5E86146CCC414B5331F0 /* BucketListView.swift */; };
 		D4B5B602B3429EAB0D589148 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 071420C369D57BCD58CC36F0 /* RootView.swift */; };
 		E11974A17FC02C6759BB6801 /* AppCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A334F6D930AE8D06E1323805 /* AppCoordinator.swift */; };
-		E895554E8F556A912B15E8C6 /* BucketBrowserWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F492638997B3141245F03F3D /* BucketBrowserWindowController.swift */; };
 		ECF9FBB227B22EB91E273EBD /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 16C63A921148DA65E12213D0 /* Assets.xcassets */; };
 		F07B8625B119AE8F02A0E572 /* NotedAppShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7978FE1FAE0A1475A7E2313D /* NotedAppShortcuts.swift */; };
 		FA178BBC59C36FCE72BC4DD9 /* WindowManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B88740FB0FF2B4856B486CF3 /* WindowManager.swift */; };
@@ -73,7 +72,6 @@
 		DE427FA822178EAE2C76AC84 /* SettingsWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsWindowController.swift; sourceTree = "<group>"; };
 		EB009F8D1E0FD0C62A4A7BB6 /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
 		F3647A78B35FB0EC50557DA6 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
-		F492638997B3141245F03F3D /* BucketBrowserWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BucketBrowserWindowController.swift; sourceTree = "<group>"; };
 		F6F05880BC0ED424A37FF4DF /* NotedKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = NotedKit; path = NotedKit; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
@@ -203,7 +201,6 @@
 			children = (
 				0AE059B0BADC3F6FF3288BED /* AllNotesViewController.swift */,
 				1EC7DDCFAC1A89E0F123584F /* AllNotesWindowController.swift */,
-				F492638997B3141245F03F3D /* BucketBrowserWindowController.swift */,
 				AB1CBC86BBFFCAAA51075FD0 /* NoteDetailViewController.swift */,
 			);
 			path = AllNotes;
@@ -369,7 +366,6 @@
 				401B5CBF45944BC5EE17D3DC /* AllNotesWindowController.swift in Sources */,
 				E11974A17FC02C6759BB6801 /* AppCoordinator.swift in Sources */,
 				9D5F96747EE0A247E50CC3D3 /* AppDelegate.swift in Sources */,
-				E895554E8F556A912B15E8C6 /* BucketBrowserWindowController.swift in Sources */,
 				5CE5D3FB5AD4E0A9A75DD9E5 /* NoteContentView.swift in Sources */,
 				6732B196B608CC6DBF3E3BC6 /* NoteDetailViewController.swift in Sources */,
 				732A8BC7F4330A4AD1A04F4D /* NoteEditorCoordinator.swift in Sources */,
