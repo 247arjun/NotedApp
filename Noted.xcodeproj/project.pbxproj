@@ -56,7 +56,7 @@
 		41839683764761BBF2286541 /* Signing.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Signing.xcconfig; sourceTree = "<group>"; };
 		43237D109B897E69523EC282 /* NoteTextView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteTextView.swift; sourceTree = "<group>"; };
 		49DE0C4EB94A62E0AEBFF641 /* ThemePickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemePickerView.swift; sourceTree = "<group>"; };
-		5325BCB8FADDDBDC1D69F418 /* NotedIOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = NotedIOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		5325BCB8FADDDBDC1D69F418 /* Noted.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Noted.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		5CFD5E86146CCC414B5331F0 /* BucketListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BucketListView.swift; sourceTree = "<group>"; };
 		7978FE1FAE0A1475A7E2313D /* NotedAppShortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotedAppShortcuts.swift; sourceTree = "<group>"; };
 		96C57D9472699DD99720A219 /* RichTextEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichTextEditor.swift; sourceTree = "<group>"; };
@@ -72,7 +72,7 @@
 		DE427FA822178EAE2C76AC84 /* SettingsWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsWindowController.swift; sourceTree = "<group>"; };
 		EB009F8D1E0FD0C62A4A7BB6 /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
 		F492638997B3141245F03F3D /* BucketBrowserWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BucketBrowserWindowController.swift; sourceTree = "<group>"; };
-		F6F05880BC0ED424A37FF4DF /* NotedKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = NotedKit; path = NotedKit; sourceTree = SOURCE_ROOT; };
+		F6F05880BC0ED424A37FF4DF /* NotedKit */ = {isa = PBXFileReference; lastKnownFileType = folder; path = NotedKit; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -210,7 +210,7 @@
 			isa = PBXGroup;
 			children = (
 				2F6EE2C4CE0C9D0460958407 /* Noted.app */,
-				5325BCB8FADDDBDC1D69F418 /* NotedIOS.app */,
+				5325BCB8FADDDBDC1D69F418 /* Noted.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -273,7 +273,7 @@
 				BEB48166D1475641A1DCF7C1 /* NotedKit */,
 			);
 			productName = NotedIOS;
-			productReference = 5325BCB8FADDDBDC1D69F418 /* NotedIOS.app */;
+			productReference = 5325BCB8FADDDBDC1D69F418 /* Noted.app */;
 			productType = "com.apple.product-type.application";
 		};
 		C2A1979F71AA6A4FCA9CA4EE /* Noted */ = {
@@ -306,7 +306,6 @@
 				LastUpgradeCheck = 2600;
 				TargetAttributes = {
 					6CAA5AE70544A8E978FB8B4F = {
-						DevelopmentTeam = "";
 						ProvisioningStyle = Manual;
 					};
 					C2A1979F71AA6A4FCA9CA4EE = {
@@ -408,6 +407,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = NotedIOS/Resources/NotedIOS.entitlements;
+				DEVELOPMENT_TEAM = 24CVMV6NZZ;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = NotedIOS/Resources/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
@@ -429,6 +429,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = NotedIOS/Resources/NotedIOS.entitlements;
+				DEVELOPMENT_TEAM = 24CVMV6NZZ;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = NotedIOS/Resources/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
