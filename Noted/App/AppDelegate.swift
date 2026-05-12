@@ -28,6 +28,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         false // Stay alive even if all windows are closed.
     }
 
+    /// Menu shown when the user right-clicks (or two-finger taps) the app's
+    /// Dock icon. "New Note" mirrors the File-menu / ⌘N command.
+    func applicationDockMenu(_ sender: NSApplication) -> NSMenu? {
+        let menu = NSMenu()
+        let newNote = menu.addItem(
+            withTitle: "New Note",
+            action: #selector(AppCoordinator.createNewNote),
+            keyEquivalent: ""
+        )
+        newNote.target = AppCoordinator.shared
+        newNote.image = NSImage(systemSymbolName: "square.and.pencil",
+                                accessibilityDescription: "New Note")
+        return menu
+    }
+
     // MARK: - Main Menu
 
     private func buildMainMenu() -> NSMenu {

@@ -4,6 +4,7 @@ import NotedKit
 @main
 struct NotedApp: App {
 
+    @UIApplicationDelegateAdaptor(NotedAppDelegate.self) private var appDelegate
     @StateObject private var appModel = AppModel.shared
 
     var body: some Scene {

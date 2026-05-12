@@ -28,6 +28,20 @@
         <key>UIApplicationSupportsMultipleScenes</key>
         <true/>
     </dict>
+    <!-- Home Screen long-press quick actions. Static entries are available
+         from the first install (no warm-launch required) and are merged with
+         any dynamic actions surfaced via App Intents (AppShortcutsProvider). -->
+    <key>UIApplicationShortcutItems</key>
+    <array>
+        <dict>
+            <key>UIApplicationShortcutItemType</key>
+            <string>com.arjun.Noted.ios.new-note</string>
+            <key>UIApplicationShortcutItemTitle</key>
+            <string>New Note</string>
+            <key>UIApplicationShortcutItemIconType</key>
+            <string>UIApplicationShortcutIconTypeCompose</string>
+        </dict>
+    </array>
     <key>UILaunchScreen</key>
     <dict/>
     <key>UIRequiredDeviceCapabilities</key>

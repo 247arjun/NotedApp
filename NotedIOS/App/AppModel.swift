@@ -40,6 +40,13 @@ final class AppModel: ObservableObject, NoteIntentHost {
         pendingOpenNoteID = id
     }
 
+    /// Create a new note and queue it for the editor. Used by Home Screen
+    /// quick actions and any other "open straight into a fresh note" path.
+    func createAndOpenNote() {
+        let note = noteStore.createNote()
+        pendingOpenNoteID = note.id
+    }
+
     static func resolveStartupDirectory() -> URL {
         if let url = StorageLocationResolver.iCloudDirectory() { return url }
         return StorageLocationResolver.defaultLocalDirectory()
