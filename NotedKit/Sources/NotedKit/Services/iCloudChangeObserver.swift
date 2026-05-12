@@ -91,20 +91,24 @@ public final class iCloudChangeObserver: @unchecked Sendable {
         q.disableUpdates()
         defer { q.enableUpdates() }
 
-        // Build the set of IDs currently in iCloud
+        // Build the set of IDs currently in iCloud's *active* bucket only.
+        // Items inside Archived/ or Trash/ subfolders are intentionally
+        // excluded — those buckets are loaded on demand by their dedicated
+        // views; we don't want their churn waking up the active store.
         var currentIDs: Set<UUID> = []
         for i in 0..<q.resultCount {
             guard let item = q.result(at: i) as? NSMetadataItem,
                   let name = item.value(forAttribute: NSMetadataItemFSNameKey) as? String else { continue }
+            if isInSecondaryBucket(item) { continue }
             let stem = (name as NSString).deletingPathExtension
             guard let id = UUID(uuidString: stem) else { continue }
             currentIDs.insert(id)
         }
 
         let userInfo = note.userInfo ?? [:]
-        let added   = userInfo[NSMetadataQueryUpdateAddedItemsKey]   as? [NSMetadataItem] ?? []
-        let changed = userInfo[NSMetadataQueryUpdateChangedItemsKey] as? [NSMetadataItem] ?? []
-        let removed = userInfo[NSMetadataQueryUpdateRemovedItemsKey] as? [NSMetadataItem] ?? []
+        let added   = (userInfo[NSMetadataQueryUpdateAddedItemsKey]   as? [NSMetadataItem] ?? []).filter { !isInSecondaryBucket($0) }
+        let changed = (userInfo[NSMetadataQueryUpdateChangedItemsKey] as? [NSMetadataItem] ?? []).filter { !isInSecondaryBucket($0) }
+        let removed = (userInfo[NSMetadataQueryUpdateRemovedItemsKey] as? [NSMetadataItem] ?? []).filter { !isInSecondaryBucket($0) }
 
         if note.name == .NSMetadataQueryDidFinishGathering {
             lock.lock()
@@ -136,6 +140,14 @@ public final class iCloudChangeObserver: @unchecked Sendable {
                 changes.send(.init(kind: .removed, noteID: id))
             }
         }
+    }
+
+    /// True if the metadata item lives inside Archived/ or Trash/ — i.e. it's
+    /// a note in a secondary bucket that should not flow into the active
+    /// `notes` collection.
+    private func isInSecondaryBucket(_ item: NSMetadataItem) -> Bool {
+        guard let path = item.value(forAttribute: NSMetadataItemPathKey) as? String else { return false }
+        return path.contains("/Archived/") || path.contains("/Trash/")
     }
 
     private func id(of item: NSMetadataItem) -> UUID? {

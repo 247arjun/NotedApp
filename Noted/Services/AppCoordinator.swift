@@ -7,7 +7,7 @@ import Combine
 /// Central coordinator that owns the note store, window manager, and persistence.
 /// Accessed as a shared singleton from both SwiftUI and AppKit.
 @MainActor
-final class AppCoordinator: ObservableObject {
+final class AppCoordinator: ObservableObject, NoteIntentHost {
 
     static let shared = AppCoordinator()
 
@@ -34,6 +34,13 @@ final class AppCoordinator: ObservableObject {
            StorageLocationResolver.iCloudDirectory() != nil {
             installICloudObserver(directory: dir)
         }
+
+        // Register with the App Intents bridge so Siri / Spotlight /
+        // Shortcuts can talk to our store.
+        IntentHostRegistry.current = self
+
+        // Auto-purge anything that's been in Trash > 30 days.
+        store.purgeOldTrash()
     }
 
     // MARK: - App Lifecycle
@@ -89,8 +96,15 @@ final class AppCoordinator: ObservableObject {
         windowManager.openWindow(for: noteID)
     }
 
+    /// `NoteIntentHost` conformance — called from `OpenNoteIntent`.
+    func openNote(id: UUID) {
+        NSApp.activate(ignoringOtherApps: true)
+        windowManager.openWindow(for: id)
+    }
+
     func deleteNote(noteID: UUID) {
         windowManager.closeWindow(for: noteID)
+        // deleteNote on NoteStore now routes to trash (30-day grace period).
         noteStore.deleteNote(noteID: noteID)
     }
 
@@ -98,14 +112,54 @@ final class AppCoordinator: ObservableObject {
         guard let noteID = currentNoteID(),
               let window = NSApp.keyWindow else { return }
         let alert = NSAlert()
-        alert.messageText = "Delete Note?"
-        alert.informativeText = "This note will be permanently deleted. This action cannot be undone."
+        alert.messageText = "Move Note to Trash?"
+        alert.informativeText = "The note will move to Trash and be permanently deleted after 30 days."
         alert.alertStyle = .warning
-        alert.addButton(withTitle: "Delete")
+        alert.addButton(withTitle: "Move to Trash")
         alert.addButton(withTitle: "Cancel")
         alert.beginSheetModal(for: window) { [weak self] response in
             guard response == .alertFirstButtonReturn else { return }
             self?.deleteNote(noteID: noteID)
+        }
+    }
+
+    // MARK: - Archive
+
+    func archiveNote(noteID: UUID) {
+        windowManager.closeWindow(for: noteID)
+        noteStore.archive(noteID: noteID)
+    }
+
+    @objc func archiveCurrentNote() {
+        guard let noteID = currentNoteID() else { return }
+        archiveNote(noteID: noteID)
+    }
+
+    @objc func showArchive() {
+        bucketBrowser(.archived).showWindow()
+    }
+
+    @objc func showTrash() {
+        bucketBrowser(.trash).showWindow()
+    }
+
+    private var archiveBrowser: BucketBrowserWindowController?
+    private var trashBrowser:   BucketBrowserWindowController?
+
+    private func bucketBrowser(_ bucket: StorageBucket) -> BucketBrowserWindowController {
+        switch bucket {
+        case .archived:
+            if let c = archiveBrowser { return c }
+            let c = BucketBrowserWindowController(noteStore: noteStore, bucket: .archived)
+            archiveBrowser = c
+            return c
+        case .trash:
+            if let c = trashBrowser { return c }
+            let c = BucketBrowserWindowController(noteStore: noteStore, bucket: .trash)
+            trashBrowser = c
+            return c
+        case .active:
+            fatalError("Use AllNotesWindowController for the active bucket.")
         }
     }
 
@@ -193,6 +247,14 @@ final class AppCoordinator: ObservableObject {
     @objc func toggleBullets(_ sender: Any?)       { NSApp.sendAction(#selector(NoteTextView.toggleBullets(_:)), to: nil, from: sender) }
     @objc func showTextColor(_ sender: Any?)       { NSApp.orderFrontColorPanel(sender) }
     @objc func bringNoteToFront(_ sender: Any?)    { NSApp.keyWindow?.makeKeyAndOrderFront(sender) }
+
+    @objc func performFindInNote(_ sender: Any?) {
+        // Route to the current note's text view via the standard NSTextFinder
+        // action ladder. tag value 1 corresponds to `.showFindInterface`.
+        let item = NSMenuItem()
+        item.tag = NSTextFinder.Action.showFindInterface.rawValue
+        NSApp.sendAction(#selector(NSTextView.performTextFinderAction(_:)), to: nil, from: item)
+    }
 
     @objc func pinUnpinCurrentNote(_ sender: Any?) {
         guard let noteID = currentNoteID(),

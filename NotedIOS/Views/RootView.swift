@@ -7,6 +7,7 @@ import NotedKit
 /// On iPad: NavigationSplitView with the list as sidebar and editor as detail.
 struct RootView: View {
     @EnvironmentObject private var noteStore: NoteStore
+    @EnvironmentObject private var appModel: AppModel
     @State private var selectedNoteID: UUID?
     @State private var showSettings = false
     @Environment(\.horizontalSizeClass) private var hSizeClass
@@ -39,6 +40,11 @@ struct RootView: View {
         }
         .sheet(isPresented: $showSettings) {
             NavigationStack { SettingsView() }
+        }
+        .onChange(of: appModel.pendingOpenNoteID) { _, id in
+            guard let id else { return }
+            selectedNoteID = id
+            appModel.pendingOpenNoteID = nil
         }
     }
 }

@@ -33,6 +33,10 @@ final class NoteTextView: NSTextView {
         isContinuousSpellCheckingEnabled = true
         isGrammarCheckingEnabled = false
 
+        // Find-in-note via the system find bar.
+        usesFindBar = true
+        isIncrementalSearchingEnabled = true
+
         textContainer?.widthTracksTextView = true
         textContainer?.containerSize = NSSize(
             width: 0, // will be set by scroll view

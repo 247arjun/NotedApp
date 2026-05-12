@@ -6,7 +6,7 @@ import NotedKit
 /// backend, and the iCloud change observer. Always uses iCloud Drive when
 /// signed in; falls back to local storage otherwise.
 @MainActor
-final class AppModel: ObservableObject {
+final class AppModel: ObservableObject, NoteIntentHost {
 
     static let shared = AppModel()
 
@@ -15,6 +15,10 @@ final class AppModel: ObservableObject {
     private var iCloudObserver: iCloudChangeObserver?
 
     @Published private(set) var usingICloud: Bool = false
+
+    /// Navigation hook for `OpenNoteIntent`. The RootView observes this and
+    /// pushes the editor when it changes.
+    @Published var pendingOpenNoteID: UUID?
 
     private init() {
         let directory = AppModel.resolveStartupDirectory()
@@ -25,7 +29,15 @@ final class AppModel: ObservableObject {
             && directory.path.contains("Mobile Documents")
 
         noteStore.loadAll()
+        noteStore.purgeOldTrash()
         installICloudObserverIfNeeded(directory: directory)
+
+        IntentHostRegistry.current = self
+    }
+
+    /// `NoteIntentHost` conformance — called from `OpenNoteIntent`.
+    func openNote(id: UUID) {
+        pendingOpenNoteID = id
     }
 
     static func resolveStartupDirectory() -> URL {

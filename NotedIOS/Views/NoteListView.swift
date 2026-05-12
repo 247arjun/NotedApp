@@ -68,12 +68,27 @@ struct NoteListView: View {
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
         ToolbarItem(placement: .topBarLeading) {
-            Button {
-                showSettings = true
+            Menu {
+                NavigationLink {
+                    BucketListView(bucket: .archived)
+                } label: {
+                    Label("Archived", systemImage: "archivebox")
+                }
+                NavigationLink {
+                    BucketListView(bucket: .trash)
+                } label: {
+                    Label("Trash", systemImage: "trash")
+                }
+                Divider()
+                Button {
+                    showSettings = true
+                } label: {
+                    Label("Settings", systemImage: "gearshape")
+                }
             } label: {
-                Image(systemName: "gearshape")
+                Image(systemName: "line.3.horizontal")
             }
-            .accessibilityLabel("Settings")
+            .accessibilityLabel("Menu")
         }
         ToolbarItem(placement: .topBarTrailing) {
             Menu {
@@ -103,10 +118,17 @@ struct NoteListView: View {
             .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                 Button(role: .destructive) {
                     if selection == note.id { selection = nil }
-                    noteStore.deleteNote(noteID: note.id)
+                    noteStore.deleteNote(noteID: note.id)  // → Trash (30-day grace)
                 } label: {
                     Label("Delete", systemImage: "trash")
                 }
+                Button {
+                    if selection == note.id { selection = nil }
+                    noteStore.archive(noteID: note.id)
+                } label: {
+                    Label("Archive", systemImage: "archivebox")
+                }
+                .tint(.gray)
             }
             .swipeActions(edge: .leading) {
                 Button {
@@ -128,6 +150,12 @@ struct NoteListView: View {
                     }
                 } label: {
                     Label("Duplicate", systemImage: "plus.square.on.square")
+                }
+                Button {
+                    if selection == note.id { selection = nil }
+                    noteStore.archive(noteID: note.id)
+                } label: {
+                    Label("Archive", systemImage: "archivebox")
                 }
                 #if os(iOS)
                 if UIDevice.current.userInterfaceIdiom == .pad {

@@ -293,12 +293,19 @@ final class AllNotesViewController: NSViewController, NSTableViewDataSource, NST
 
         switch edge {
         case .trailing:
-            // Swipe left → Delete
+            // Swipe left → Delete (sends to Trash with 30-day grace)
+            //   + Archive (stowed away in the Archived bucket, not loaded on launch)
             let delete = NSTableViewRowAction(style: .destructive, title: "Delete") { [weak self] _, _ in
                 self?.onDeleteNote?(note.id)
             }
             delete.backgroundColor = .systemRed
-            return [delete]
+
+            let archive = NSTableViewRowAction(style: .regular, title: "Archive") { [weak self] _, _ in
+                self?.noteStore?.archive(noteID: note.id)
+            }
+            archive.backgroundColor = .systemGray
+            archive.image = NSImage(systemSymbolName: "archivebox", accessibilityDescription: "Archive")
+            return [delete, archive]
 
         case .leading:
             // Swipe right → Pin/Unpin
@@ -416,10 +423,18 @@ final class AllNotesViewController: NSViewController, NSTableViewDataSource, NST
         menu.addItem(.separator())
         let pinItem = menu.addItem(withTitle: "Pin / Unpin", action: #selector(contextPin(_:)), keyEquivalent: "")
         pinItem.target = self
+        let archiveItem = menu.addItem(withTitle: "Archive", action: #selector(contextArchive(_:)), keyEquivalent: "")
+        archiveItem.target = self
         menu.addItem(.separator())
         let deleteItem = menu.addItem(withTitle: "Delete", action: #selector(contextDelete(_:)), keyEquivalent: "")
         deleteItem.target = self
         return menu
+    }
+
+    @objc private func contextArchive(_ sender: Any?) {
+        let row = tableView.clickedRow >= 0 ? tableView.clickedRow : tableView.selectedRow
+        guard let note = noteAt(row: row) else { return }
+        noteStore?.archive(noteID: note.id)
     }
 }
 

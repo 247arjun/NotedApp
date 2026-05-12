@@ -21,6 +21,12 @@ public struct NoteRecord: Codable, Identifiable, Equatable, Sendable {
     public var isArchived: Bool
     public var manualSortOrder: Int
 
+    /// Soft-deleted: file lives in the Trash/ subfolder of the notes directory
+    /// and is purged after 30 days. Not loaded into the active store.
+    public var isInTrash: Bool
+    /// Set when the note moved into Trash; used for the 30-day purge window.
+    public var trashedAt: Date?
+
     public init(
         id: UUID = UUID(),
         title: String = "",
@@ -32,7 +38,9 @@ public struct NoteRecord: Codable, Identifiable, Equatable, Sendable {
         updatedAt: Date = Date(),
         isClosed: Bool = false,
         isArchived: Bool = false,
-        manualSortOrder: Int = 0
+        manualSortOrder: Int = 0,
+        isInTrash: Bool = false,
+        trashedAt: Date? = nil
     ) {
         self.id = id
         self.title = title
@@ -45,6 +53,27 @@ public struct NoteRecord: Codable, Identifiable, Equatable, Sendable {
         self.isClosed = isClosed
         self.isArchived = isArchived
         self.manualSortOrder = manualSortOrder
+        self.isInTrash = isInTrash
+        self.trashedAt = trashedAt
+    }
+
+    // Backward-compatible decoding: notes saved before isInTrash/trashedAt
+    // existed simply default those fields.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.id                 = try c.decode(UUID.self,          forKey: .id)
+        self.title              = try c.decode(String.self,        forKey: .title)
+        self.attributedBodyData = try c.decode(Data.self,          forKey: .attributedBodyData)
+        self.themeID            = try c.decode(String.self,        forKey: .themeID)
+        self.isPinned           = try c.decode(Bool.self,          forKey: .isPinned)
+        self.frame              = try c.decode(PersistedRect.self, forKey: .frame)
+        self.createdAt          = try c.decode(Date.self,          forKey: .createdAt)
+        self.updatedAt          = try c.decode(Date.self,          forKey: .updatedAt)
+        self.isClosed           = try c.decode(Bool.self,          forKey: .isClosed)
+        self.isArchived         = try c.decode(Bool.self,          forKey: .isArchived)
+        self.manualSortOrder    = try c.decode(Int.self,           forKey: .manualSortOrder)
+        self.isInTrash          = try c.decodeIfPresent(Bool.self, forKey: .isInTrash) ?? false
+        self.trashedAt          = try c.decodeIfPresent(Date.self, forKey: .trashedAt)
     }
 
     /// Full plain-text body for search.

@@ -55,13 +55,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         fileMenu.addItem(withTitle: "Duplicate Note", action: #selector(AppCoordinator.duplicateCurrentNote), keyEquivalent: "").target = AppCoordinator.shared
         fileMenu.addItem(.separator())
         fileMenu.addItem(withTitle: "Close Note", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
-        let deleteItem = fileMenu.addItem(withTitle: "Delete Note…", action: #selector(AppCoordinator.deleteCurrentNote), keyEquivalent: "\u{8}")
+        let archiveItem = fileMenu.addItem(withTitle: "Archive Note", action: #selector(AppCoordinator.archiveCurrentNote), keyEquivalent: "A")
+        archiveItem.keyEquivalentModifierMask = [.command, .shift, .control]
+        archiveItem.target = AppCoordinator.shared
+        let deleteItem = fileMenu.addItem(withTitle: "Move to Trash…", action: #selector(AppCoordinator.deleteCurrentNote), keyEquivalent: "\u{8}")
         deleteItem.target = AppCoordinator.shared
         deleteItem.keyEquivalentModifierMask = [.command]
         fileMenu.addItem(.separator())
         let allNotesItem = fileMenu.addItem(withTitle: "All Notes", action: #selector(AppCoordinator.showAllNotes), keyEquivalent: "A")
         allNotesItem.keyEquivalentModifierMask = [.command, .shift]
         allNotesItem.target = AppCoordinator.shared
+        let archiveBrowserItem = fileMenu.addItem(withTitle: "Archived Notes…", action: #selector(AppCoordinator.showArchive), keyEquivalent: "")
+        archiveBrowserItem.target = AppCoordinator.shared
+        let trashBrowserItem = fileMenu.addItem(withTitle: "Trash…", action: #selector(AppCoordinator.showTrash), keyEquivalent: "")
+        trashBrowserItem.target = AppCoordinator.shared
         fileMenu.addItem(.separator())
         fileMenu.addItem(withTitle: "Export as Plain Text…", action: #selector(AppCoordinator.exportPlainText), keyEquivalent: "").target = AppCoordinator.shared
         fileMenu.addItem(withTitle: "Export as RTF…", action: #selector(AppCoordinator.exportRTF), keyEquivalent: "").target = AppCoordinator.shared
@@ -82,6 +89,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         pasteMatch.keyEquivalentModifierMask = [.command, .option, .shift]
         editMenu.addItem(.separator())
         editMenu.addItem(withTitle: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+        editMenu.addItem(.separator())
+        let findItem = editMenu.addItem(withTitle: "Find in Note…", action: #selector(AppCoordinator.performFindInNote(_:)), keyEquivalent: "f")
+        findItem.target = AppCoordinator.shared
         let editMenuItem = NSMenuItem()
         editMenuItem.submenu = editMenu
         mainMenu.addItem(editMenuItem)

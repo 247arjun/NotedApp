@@ -5,9 +5,12 @@ import NotedKit
 // MARK: - RichTextEditor
 
 /// SwiftUI wrapper around UITextView for RTF-backed rich text editing.
-/// Mirrors the formatting actions of the macOS `NoteTextView`: bold, italic,
-/// underline, font-size delta, bullets. Surfaces a custom keyboard accessory
-/// bar with those actions.
+/// Mirrors the formatting actions of the macOS `NoteTextView`: bold,
+/// italic, underline, size +/-, bullets. Surfaces a keyboard accessory
+/// bar plus Find via `findInteraction` (iOS 16+).
+///
+/// Markdown shortcuts (`**bold**`, `*italic*`, `` `code` ``, etc.) are
+/// recognized live via `NotedKit.MarkdownShortcuts`.
 struct RichTextEditor: UIViewRepresentable {
 
     @Binding var attributedData: Data
@@ -23,21 +26,22 @@ struct RichTextEditor: UIViewRepresentable {
         tv.textContainerInset = UIEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
         tv.backgroundColor = .clear
         tv.delegate = context.coordinator
+        // System Find UI on iOS 16+ — surfaced via our toolbar's Find button
+        // and the hardware ⌘F shortcut.
+        tv.isFindInteractionEnabled = true
         tv.inputAccessoryView = context.coordinator.makeAccessoryBar()
         applyTheme(to: tv)
         loadAttributedString(into: tv)
+        context.coordinator.textView = tv
         return tv
     }
 
     func updateUIView(_ tv: UITextView, context: Context) {
         applyTheme(to: tv)
-        // Only reload if the incoming bytes differ — avoid clobbering the
-        // caret while the user types.
         let currentData = currentAttributedData(from: tv)
         if currentData != attributedData {
             let selected = tv.selectedRange
             loadAttributedString(into: tv)
-            // Restore selection if possible
             if selected.location <= (tv.text as NSString).length {
                 tv.selectedRange = selected
             }
@@ -89,20 +93,39 @@ struct RichTextEditor: UIViewRepresentable {
 
         init(parent: RichTextEditor) { self.parent = parent }
 
+        // MARK: UITextViewDelegate
+
         func textViewDidChange(_ textView: UITextView) {
             self.textView = textView
-            let data = parent.currentAttributedData(from: textView)
-            // Push to binding (debounced inside NoteStore)
-            DispatchQueue.main.async { [data] in
-                self.parent.attributedData = data
+
+            // Inline markdown shortcuts: collapse **bold**, *italic*, `code`,
+            // ~~strike~~ etc. when the closing marker is typed.
+            if let storage = textView.textStorage as NSMutableAttributedString?,
+               let edited = lastEditedRange(in: textView) {
+                let result = MarkdownShortcuts.processEdit(
+                    in: storage,
+                    editedRange: edited,
+                    baseFont: AppSettings.shared.defaultFont
+                )
+                if result.replaced, result.newCaret >= 0 {
+                    textView.selectedRange = NSRange(location: result.newCaret, length: 0)
+                }
             }
+
+            triggerChange()
         }
 
         func textViewDidBeginEditing(_ textView: UITextView) {
             self.textView = textView
         }
 
-        // MARK: - Accessory Bar
+        private func lastEditedRange(in textView: UITextView) -> NSRange? {
+            let sel = textView.selectedRange
+            guard sel.length == 0, sel.location > 0 else { return nil }
+            return NSRange(location: sel.location - 1, length: 1)
+        }
+
+        // MARK: Accessory bar
 
         func makeAccessoryBar() -> UIToolbar {
             let bar = UIToolbar()
@@ -113,26 +136,40 @@ struct RichTextEditor: UIViewRepresentable {
                 let img = UIImage(systemName: symbol, withConfiguration: cfg)
                 return UIBarButtonItem(image: img, style: .plain, target: self, action: action)
             }
-
-            let bold     = item("bold",          #selector(toggleBold))
-            let italic   = item("italic",        #selector(toggleItalic))
-            let under    = item("underline",     #selector(toggleUnderline))
-            let bigger   = item("textformat.size.larger",  #selector(increaseSize))
-            let smaller  = item("textformat.size.smaller", #selector(decreaseSize))
-            let bullets  = item("list.bullet",   #selector(toggleBullets))
-            let flex     = UIBarButtonItem(systemItem: .flexibleSpace)
-            let done     = UIBarButtonItem(systemItem: .done, primaryAction: UIAction { [weak self] _ in
-                self?.textView?.resignFirstResponder()
-            })
-
             func fixed(_ w: CGFloat) -> UIBarButtonItem {
                 let i = UIBarButtonItem(systemItem: .fixedSpace)
                 i.width = w
                 return i
             }
 
-            bar.items = [bold, italic, under, fixed(12), smaller, bigger, fixed(12), bullets, flex, done]
+            let bold     = item("bold",                       #selector(toggleBold))
+            let italic   = item("italic",                     #selector(toggleItalic))
+            let under    = item("underline",                  #selector(toggleUnderline))
+            let bigger   = item("textformat.size.larger",     #selector(increaseSize))
+            let smaller  = item("textformat.size.smaller",    #selector(decreaseSize))
+            let bullets  = item("list.bullet",                #selector(toggleBullets))
+            let find     = item("magnifyingglass",            #selector(presentFind))
+            let flex     = UIBarButtonItem(systemItem: .flexibleSpace)
+            let done     = UIBarButtonItem(systemItem: .done, primaryAction: UIAction { [weak self] _ in
+                self?.textView?.resignFirstResponder()
+            })
+
+            bar.items = [
+                bold, italic, under,
+                fixed(12),
+                smaller, bigger,
+                fixed(12),
+                bullets,
+                fixed(12),
+                find,
+                flex,
+                done,
+            ]
             return bar
+        }
+
+        @objc fileprivate func presentFind() {
+            textView?.findInteraction?.presentFindNavigator(showingReplace: false)
         }
 
         @objc fileprivate func toggleBold()      { applyTrait(.traitBold) }
@@ -142,13 +179,12 @@ struct RichTextEditor: UIViewRepresentable {
         @objc fileprivate func decreaseSize()    { modifyFontSize(delta: -2) }
         @objc fileprivate func toggleBullets()   { applyBullets() }
 
-        // MARK: - Editing primitives
+        // MARK: Editing primitives
 
         private func applyTrait(_ trait: UIFontDescriptor.SymbolicTraits) {
             guard let tv = textView, let storage = tv.textStorage as NSMutableAttributedString? else { return }
             let range = tv.selectedRange
             guard range.length > 0 else {
-                // Toggle typing attributes if no selection
                 let current = (tv.typingAttributes[.font] as? UIFont) ?? AppSettings.shared.defaultFont
                 let newFont = toggle(font: current, trait: trait)
                 var attrs = tv.typingAttributes
