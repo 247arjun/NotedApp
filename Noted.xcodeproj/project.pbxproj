@@ -49,7 +49,7 @@
 		41839683764761BBF2286541 /* Signing.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Signing.xcconfig; sourceTree = "<group>"; };
 		43237D109B897E69523EC282 /* NoteTextView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteTextView.swift; sourceTree = "<group>"; };
 		49DE0C4EB94A62E0AEBFF641 /* ThemePickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemePickerView.swift; sourceTree = "<group>"; };
-		5325BCB8FADDDBDC1D69F418 /* NotedIOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = NotedIOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		5325BCB8FADDDBDC1D69F418 /* Noted.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Noted.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		96C57D9472699DD99720A219 /* RichTextEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichTextEditor.swift; sourceTree = "<group>"; };
 		97BF8C969279084C7168DE01 /* NoteEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteEditorView.swift; sourceTree = "<group>"; };
 		A334F6D930AE8D06E1323805 /* AppCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppCoordinator.swift; sourceTree = "<group>"; };
@@ -63,7 +63,7 @@
 		DE427FA822178EAE2C76AC84 /* SettingsWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsWindowController.swift; sourceTree = "<group>"; };
 		E7AD36EAF853C2D88DDCAB5C /* icon_512x512@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "icon_512x512@2x.png"; sourceTree = "<group>"; };
 		EB009F8D1E0FD0C62A4A7BB6 /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
-		F6F05880BC0ED424A37FF4DF /* NotedKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = NotedKit; path = NotedKit; sourceTree = SOURCE_ROOT; };
+		F6F05880BC0ED424A37FF4DF /* NotedKit */ = {isa = PBXFileReference; lastKnownFileType = folder; path = NotedKit; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -197,7 +197,7 @@
 			isa = PBXGroup;
 			children = (
 				2F6EE2C4CE0C9D0460958407 /* Noted.app */,
-				5325BCB8FADDDBDC1D69F418 /* NotedIOS.app */,
+				5325BCB8FADDDBDC1D69F418 /* Noted.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -267,7 +267,7 @@
 				BEB48166D1475641A1DCF7C1 /* NotedKit */,
 			);
 			productName = NotedIOS;
-			productReference = 5325BCB8FADDDBDC1D69F418 /* NotedIOS.app */;
+			productReference = 5325BCB8FADDDBDC1D69F418 /* Noted.app */;
 			productType = "com.apple.product-type.application";
 		};
 		C2A1979F71AA6A4FCA9CA4EE /* Noted */ = {
@@ -304,7 +304,6 @@
 						ProvisioningStyle = Manual;
 					};
 					C2A1979F71AA6A4FCA9CA4EE = {
-						DevelopmentTeam = "";
 						ProvisioningStyle = Manual;
 					};
 				};
@@ -397,7 +396,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.noted.app.ios;
+				PRODUCT_BUNDLE_IDENTIFIER = com.arjun.Noted.ios;
 				PRODUCT_NAME = Noted;
 				SDKROOT = iphoneos;
 				SUPPORTS_MACCATALYST = NO;
@@ -418,7 +417,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.noted.app.ios;
+				PRODUCT_BUNDLE_IDENTIFIER = com.arjun.Noted.ios;
 				PRODUCT_NAME = Noted;
 				SDKROOT = iphoneos;
 				SUPPORTS_MACCATALYST = NO;
@@ -433,13 +432,14 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Noted/Resources/Noted.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
+				DEVELOPMENT_TEAM = 24CVMV6NZZ;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Noted/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.noted.app;
+				PRODUCT_BUNDLE_IDENTIFIER = com.arjun.Noted;
 				PRODUCT_NAME = Noted;
 				SDKROOT = macosx;
 			};
@@ -515,13 +515,14 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Noted/Resources/Noted.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
+				DEVELOPMENT_TEAM = 24CVMV6NZZ;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Noted/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.noted.app;
+				PRODUCT_BUNDLE_IDENTIFIER = com.arjun.Noted;
 				PRODUCT_NAME = Noted;
 				SDKROOT = macosx;
 			};

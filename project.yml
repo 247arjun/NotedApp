@@ -1,6 +1,6 @@
 name: Noted
 options:
-  bundleIdPrefix: com.noted
+  bundleIdPrefix: com.arjun
   deploymentTarget:
     macOS: "26.0"
     iOS: "17.0"
@@ -42,7 +42,7 @@ targets:
     scheme: {}
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.noted.app
+        PRODUCT_BUNDLE_IDENTIFIER: com.arjun.Noted
         PRODUCT_NAME: Noted
         INFOPLIST_FILE: Noted/Resources/Info.plist
         CODE_SIGN_ENTITLEMENTS: Noted/Resources/Noted.entitlements
@@ -75,7 +75,7 @@ targets:
     scheme: {}
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.noted.app.ios
+        PRODUCT_BUNDLE_IDENTIFIER: com.arjun.Noted.ios
         PRODUCT_NAME: Noted
         INFOPLIST_FILE: NotedIOS/Resources/Info.plist
         CODE_SIGN_ENTITLEMENTS: NotedIOS/Resources/NotedIOS.entitlements

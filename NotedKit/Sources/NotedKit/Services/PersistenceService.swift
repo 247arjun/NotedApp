@@ -25,7 +25,7 @@ public final class FilePersistenceService: PersistenceService, @unchecked Sendab
 
     public private(set) var notesDirectory: URL
     private let coordinator = NSFileCoordinator()
-    private let queue = DispatchQueue(label: "com.noted.persistence", qos: .userInitiated)
+    private let queue = DispatchQueue(label: "com.arjun.Noted.persistence", qos: .userInitiated)
 
     public init(directory: URL) {
         self.notesDirectory = directory

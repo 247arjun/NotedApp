@@ -5,7 +5,7 @@ import os.log
 
 /// Centralised loggers shared across macOS and iOS targets.
 public enum Log {
-    private static let subsystem = Bundle.main.bundleIdentifier ?? "com.noted.app"
+    private static let subsystem = Bundle.main.bundleIdentifier ?? "com.arjun.Noted"
 
     public static let note    = Logger(subsystem: subsystem, category: "note")
     public static let persist = Logger(subsystem: subsystem, category: "persistence")

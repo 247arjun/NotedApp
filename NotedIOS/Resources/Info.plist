@@ -52,7 +52,7 @@
          devices signed into the same Apple ID. -->
     <key>NSUbiquitousContainers</key>
     <dict>
-        <key>iCloud.com.noted.app</key>
+        <key>iCloud.com.arjun.Noted</key>
         <dict>
             <key>NSUbiquitousContainerIsDocumentScopePublic</key>
             <true/>

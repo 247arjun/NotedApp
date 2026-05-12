@@ -34,7 +34,7 @@
     <!-- Surface the iCloud ubiquity container as "Noted" in iCloud Drive. -->
     <key>NSUbiquitousContainers</key>
     <dict>
-        <key>iCloud.com.noted.app</key>
+        <key>iCloud.com.arjun.Noted</key>
         <dict>
             <key>NSUbiquitousContainerIsDocumentScopePublic</key>
             <true/>

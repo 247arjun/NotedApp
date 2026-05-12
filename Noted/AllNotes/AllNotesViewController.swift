@@ -34,7 +34,7 @@ enum NoteSortMode: Int, CaseIterable {
 
 // MARK: - Drag type
 
-private let noteRowDragType = NSPasteboard.PasteboardType("com.noted.note-row")
+private let noteRowDragType = NSPasteboard.PasteboardType("com.arjun.Noted.note-row")
 
 // MARK: - AllNotesViewController
 

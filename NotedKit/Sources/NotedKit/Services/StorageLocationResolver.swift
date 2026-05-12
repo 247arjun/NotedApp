@@ -20,7 +20,7 @@ public enum StorageLocation: Equatable, Sendable {
 public enum StorageLocationResolver {
 
     /// iCloud container identifier shared by both macOS and iOS targets.
-    public static let iCloudContainerID = "iCloud.com.noted.app"
+    public static let iCloudContainerID = "iCloud.com.arjun.Noted"
 
     /// Resolves a location to a usable directory URL. Returns nil only for
     /// `.iCloud` when the user is not signed into iCloud / iCloud Drive is off.
