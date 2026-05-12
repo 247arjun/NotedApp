@@ -1,0 +1,66 @@
+# ---------------------------------------------------------------------------
+# macOS
+# ---------------------------------------------------------------------------
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+.Spotlight-V100
+.Trashes
+
+# ---------------------------------------------------------------------------
+# Xcode — user-specific
+# ---------------------------------------------------------------------------
+xcuserdata/
+*.xcuserstate
+*.xcuserdatad/
+*.xcscmblueprint
+*.xccheckout
+
+# Xcode — build output
+build/
+DerivedData/
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Xcode — playground / archives
+timeline.xctimeline
+playground.xcworkspace
+*.xcarchive
+
+# ---------------------------------------------------------------------------
+# Swift Package Manager
+# ---------------------------------------------------------------------------
+.build/
+.swiftpm/
+Package.resolved
+Packages/
+*.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/configuration/
+
+# ---------------------------------------------------------------------------
+# CocoaPods / Carthage / fastlane (not used today, future-proofing)
+# ---------------------------------------------------------------------------
+Pods/
+Carthage/Build/
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output
+
+# ---------------------------------------------------------------------------
+# Local signing overrides (kept out of git; see Configs/Signing.xcconfig)
+# ---------------------------------------------------------------------------
+Configs/Signing.local.xcconfig
+
+# ---------------------------------------------------------------------------
+# Editors
+# ---------------------------------------------------------------------------
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
